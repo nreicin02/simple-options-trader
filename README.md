@@ -1,126 +1,201 @@
-# Simple Options Trader 📊💹
+# Simple Options Trader
 
-A comprehensive trading platform built with React, TypeScript, and Node.js that provides real-time stock trading, options trading, financial analysis, and interactive charts with advanced performance analytics.
+A modern, full-stack options trading platform for simulating stock and options trades, tracking portfolios, and analyzing financial data. Built with React, TypeScript, Node.js, and PostgreSQL.
+
+---
 
 ## 🚀 Features
 
-- **Stock Trading**: Buy and sell stocks with market and limit orders
-- **Options Trading**: Trade call and put options with Greeks calculation
-- **Real-time Data**: Live stock quotes and market data via Alpha Vantage API
-- **Portfolio Management**: Track positions, P&L, and performance metrics
-- **Performance Analytics**: Comprehensive P&L analysis with win/loss ratios
-- **Financial Analysis**: Company overview, financial statements, earnings data
-- **Interactive Charts**: Price history and volume analysis with multiple timeframes
-- **Watchlists**: Track multiple stocks in real-time
+### Real-Time Stock Data
+- Fetches live stock quotes and market data from Alpha Vantage API
+- **Automatic fallback to mock data** with user notification if API rate limits are reached
+- Supports major tickers (AAPL, TSLA, MSFT, etc.) and custom symbols
+
+### Options Trading Simulation
+- View options chains for supported stocks
+- Simulate buying/selling call and put options
+- Calculates Greeks (Delta, Gamma, Theta, Vega) and risk metrics
+- Expiration and strike selection
+
+### Portfolio Management
+- Track open positions, cash, and P&L in real time
+- View day and total P&L, market value, and trade history
+- Realistic order placement and position tracking
+
+### Financial Analytics
+- Company overview, sector, and market cap
+- Income statement, balance sheet, and cash flow data
+- Recent earnings and financial ratios
+
+### Watchlist
+- Add/remove stocks to a personal watchlist
+- View real-time data for all watchlist symbols
+
+### User Authentication
+- Secure registration and login with JWT
+- User experience level selection
+- Protected routes for trading and portfolio
+
+### Responsive UI & UX
+- Built with shadcn/ui and Tailwind CSS for a modern, mobile-friendly interface
+- Interactive charts (Recharts) for price and volume history
+- Smart notifications for API status, errors, and mock data usage
+
+---
 
 ## 🛠️ Tech Stack
 
-**Frontend**: React 18, TypeScript, Vite, shadcn/ui, Recharts, Tailwind CSS
-**Backend**: Node.js, Express.js, Prisma, PostgreSQL, JWT, Alpha Vantage API
-**Development**: ESLint, Prettier, TypeScript, Nodemon
+### Frontend
+- **React 18** + **TypeScript**
+- **Vite** for fast development
+- **shadcn/ui** for UI components
+- **Tailwind CSS** for styling
+- **Recharts** for data visualization
+- **React Router** for navigation
 
-## 🚀 Quick Start
+### Backend
+- **Node.js** + **Express** + **TypeScript**
+- **Prisma ORM** with **PostgreSQL**
+- **JWT** for authentication
+- **Alpha Vantage API** for market data
+- **Redis** for caching (optional, app works without it)
+
+### Dev Tools
+- **ESLint** & **Prettier** for code quality
+- **Vitest** for testing
+- **Nodemon** for backend hot reload
+- **Concurrently** for running both servers
+
+---
+
+## ⚡ Quick Start
 
 ### Prerequisites
-- Node.js 18.0.0 or higher
-- PostgreSQL database
-- Alpha Vantage API key (free from https://www.alphavantage.co/)
+- Node.js 18+
+- PostgreSQL
+- Alpha Vantage API key ([get one free](https://www.alphavantage.co/))
 
 ### Setup
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/simple-options-trader.git
+git clone https://github.com/nreicin02/simple-options-trader.git
 cd simple-options-trader
-npm run install:all
+npm install
+cd backend && npm install
+cd ../shadcn-ui && npm install
 
-# Set up environment variables
-# Create .env files in backend/ and shadcn-ui/ directories (see SETUP_GUIDE.md)
+# Set up environment variables (see docs/SETUP_GUIDE.md)
+# Example for backend/.env:
+# DATABASE_URL=postgresql://username:password@localhost:5432/simpli_options_dev
+# JWT_SECRET=your-secret
+# ALPHA_VANTAGE_API_KEY=your-api-key
 
 # Set up database
 cd backend
+npx prisma migrate dev
 npx prisma generate
-npx prisma db push
 
-# Start development servers
-cd ..
+# Start the app (from project root)
 npm run dev
 ```
+- Frontend: http://localhost:5174
+- Backend: http://localhost:4000
 
-### Access Points
-- **Frontend**: http://localhost:5173 (or next available port)
-- **Backend API**: http://localhost:4000
-- **API Documentation**: http://localhost:4000/api/docs
+---
 
-## 📖 Documentation
+## 📚 Documentation
+- [Setup Guide](./docs/SETUP_GUIDE.md)
+- [API Reference](./docs/API.md)
+- [Deployment Guide](./docs/DEPLOYMENT.md)
+- [Contributing](./CONTRIBUTING.md)
 
-- [Setup Guide](./docs/SETUP_GUIDE.md) - Detailed setup instructions
-- [API Documentation](./docs/API.md) - Backend API reference
-- [Deployment Guide](./docs/DEPLOYMENT.md) - Production deployment
+---
 
-## 🎯 Usage
-
-1. **Register/Login**: Create an account or use demo credentials
-2. **Stock Trading**: Search for stocks (AAPL, TSLA, MSFT) and place orders
-3. **Options Trading**: View options chains and trade with Greeks analysis
-4. **Performance**: Analyze P&L, win rates, and trading statistics
-5. **Financial Data**: Access comprehensive company financial information
-6. **Watchlists**: Track your favorite stocks in real-time
-
-## 📊 API Endpoints
+## 📊 Example API Endpoints
 
 ### Authentication
-- `POST /api/users/register` - User registration
-- `POST /api/users/login` - User login
-- `GET /api/users/me` - Get current user profile
+- `POST /api/users/register` — Register a new user
+- `POST /api/users/login` — Login and receive JWT
+- `GET /api/users/me` — Get current user profile
 
-### Trading
-- `GET /api/trading/portfolio` - Get portfolio overview
-- `GET /api/trading/positions` - Get current positions
-- `GET /api/trading/orders` - Get order history
-- `GET /api/trading/trades` - Get trade history
-- `POST /api/trading/orders` - Place new order
+### Trading & Portfolio
+- `GET /api/trading/portfolio` — Get portfolio overview
+- `GET /api/trading/positions` — Get current positions
+- `GET /api/trading/orders` — Get order history
+- `POST /api/trading/orders` — Place a new order
 
 ### Market Data
-- `GET /api/market/quote/:symbol` - Get real-time stock quote
-- `GET /api/market/financial/:symbol` - Get comprehensive financial data
-- `GET /api/market/options/:symbol` - Get options chain data
+- `GET /api/market/quote/:symbol` — Get real-time stock quote
+- `GET /api/market/financial/:symbol` — Get comprehensive financial data
+- `GET /api/market/options/:symbol` — Get options chain data
+
+---
+
+## 🔔 API Rate Limits & Mock Data
+If the Alpha Vantage API rate limit is reached, the app automatically switches to mock data and displays a notification to users. This ensures uninterrupted demo and development experience.
+
+---
 
 ## 🏗️ Project Structure
-
 ```
 simple-options-trader/
-├── backend/                 # Backend API server
-│   ├── src/routes/         # API routes and controllers
-│   ├── src/models/         # Database models
-│   ├── src/services/       # Business logic
-│   └── prisma/             # Database schema
+├── backend/                # Backend API server (Node.js, Express, Prisma)
+│   ├── src/                # Source code for backend
+│   │   ├── routes/         # Express route handlers (API endpoints)
+│   │   ├── controllers/    # Business logic for each route
+│   │   ├── services/       # Service layer (database, external APIs)
+│   │   ├── middleware/     # Express middleware (auth, error handling)
+│   │   ├── config/         # Configuration files (db, logger, redis)
+│   │   └── types/          # TypeScript types
+│   ├── prisma/             # Prisma schema and migrations
+│   ├── .env                # Backend environment variables
+│   └── ...                 # Backend config, scripts, etc.
 ├── shadcn-ui/              # Frontend React app
-│   ├── src/components/     # React components
-│   ├── src/pages/          # Page components
-│   ├── src/hooks/          # Custom hooks
-│   └── src/utils/          # Utility functions
-└── docs/                   # Documentation
+│   ├── src/                # Source code for frontend
+│   │   ├── components/     # Reusable React components (UI, layout, etc.)
+│   │   ├── pages/          # Page components (TradePage, PortfolioPage, etc.)
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── contexts/       # React context providers (auth, state)
+│   │   ├── utils/          # Utility functions (formatters, helpers)
+│   │   └── index.css       # Global styles
+│   ├── public/             # Static assets (favicon, robots.txt)
+│   ├── .env                # Frontend environment variables
+│   └── ...                 # Frontend config, scripts, etc.
+├── docs/                   # Documentation (API, setup, deployment, etc.)
+├── .gitignore              # Git ignore rules
+├── package.json            # Project metadata and scripts
+├── README.md               # Project overview and instructions
+└── ...                     # Other config, diagrams, scripts
 ```
 
-## 🔧 Development
-
-```bash
-# Run both servers
-npm run dev
-
-# Run individually
-npm run dev:backend
-npm run dev:frontend
-
-# Code quality
-npm run lint
-npm run format
-```
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
+---
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. 
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+---
+
+## 🛠️ Troubleshooting & FAQ
+
+### Port 4000 already in use / EADDRINUSE
+- Stop any other process using port 4000: `lsof -ti:4000 | xargs kill -9`
+- Restart the backend: `npm run dev`
+
+### Redis connection failed
+- Redis is optional. The app will work without it, but you can install Redis locally for caching.
+
+### API rate limit reached
+- The app will notify you and use mock data until the limit resets (see notification at the top of the dashboard).
+
+### Database connection issues
+- Ensure PostgreSQL is running and your `DATABASE_URL` is correct in `.env`.
+
+---
+
+## 📄 License
+[MIT](./LICENSE)
+
+---
+
+**Built with ❤️ for the trading community.** 
