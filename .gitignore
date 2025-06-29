@@ -111,6 +111,26 @@ dump.rdb
 *.tmp
 *.temp
 
+# Cursor IDE
+.cursor/
+
+# Duplicate ESLint configs (keep only one)
+.eslintrc.js
+.eslintrc.cjs
+
+# System design and documentation files (optional - remove if you want to keep them)
+simpli_options_class_diagram.mermaid
+simpli_options_sequence_diagram.mermaid
+simpli_options_system_design.md
+simplified_options_trading_platform_prd.md
+
+# Additional development files
+*.pem
+*.key
+*.crt
+*.dump
+*.sql
+
 # pnpm-debug.log*
 # pnpm-lock.yaml
 # pnpm-debug.log*
