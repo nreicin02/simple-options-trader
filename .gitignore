@@ -192,4 +192,7 @@ simplified_options_trading_platform_prd.md
 # dump.rdb
 # *.pem
 # *.key
-# *.crt 
+# *.crt
+
+SECURITY.md
+CONTRIBUTING.md 
