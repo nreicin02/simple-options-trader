@@ -1,0 +1,199 @@
+sequenceDiagram
+    participant User
+    participant FE as Frontend
+    participant Auth as AuthService
+    participant UPS as UserProfileService
+    participant IG as IntegrationGateway
+    participant FSP as FinancialServiceProvider
+    
+    User->>FE: Register account
+    FE->>Auth: register(email, password, personalInfo)
+    Auth->>Auth: Validate input
+    Auth->>Auth: Create user record
+    Auth->>UPS: createDefaultProfile(userId)
+    UPS-->>Auth: Success
+    Auth-->>FE: Return AuthResult
+    FE->>FE: Store auth tokens
+    FE-->>User: Show success & next steps
+    
+    User->>FE: Connect financial account
+    FE->>IG: getAvailableProviders()
+    IG-->>FE: List of providers
+    FE-->>User: Display provider options
+    User->>FE: Select provider
+    FE->>IG: initiateConnection(userId, providerId)
+    IG->>FSP: Generate OAuth URL
+    FSP-->>IG: Return auth URL
+    IG-->>FE: Return ConnectionInitiation
+    FE-->>User: Redirect to provider login
+    User->>FSP: Authenticate & authorize
+    FSP-->>FE: Redirect with auth code
+    FE->>IG: completeConnection(userId, providerId, authCode)
+    IG->>FSP: Exchange auth code for tokens
+    FSP-->>IG: Return access & refresh tokens
+    IG->>IG: Store provider connection
+    IG->>FSP: Fetch accounts
+    FSP-->>IG: Account data
+    IG->>IG: Store accounts
+    IG-->>FE: Return ConnectionResult
+    FE-->>User: Show connected accounts
+
+sequenceDiagram
+    participant User
+    participant FE as Frontend
+    participant IS as IntentionService
+    participant SRE as StrategyRecommendationEngine
+    participant MDS as MarketDataService
+    participant OMS as OrderManagementService
+    participant IG as IntegrationGateway
+    participant FSP as FinancialServiceProvider
+    
+    User->>FE: Navigate to trade
+    FE->>IS: getAvailableIntentions()
+    IS-->>FE: List of intentions
+    FE-->>User: Display intention options
+    User->>FE: Select intention & input parameters
+    FE->>SRE: getRecommendedStrategies(intentionParameters)
+    SRE->>MDS: getCurrentMarketData(symbols)
+    MDS-->>SRE: Market data
+    SRE->>SRE: Generate strategy recommendations
+    SRE-->>FE: Return Strategy[]
+    FE-->>User: Display recommended strategies
+    User->>FE: Select strategy & customize
+    FE->>OMS: previewTrade(tradeParameters)
+    OMS->>MDS: getLatestPricing(symbols)
+    MDS-->>OMS: Latest pricing
+    OMS->>OMS: Calculate costs & outcomes
+    OMS-->>FE: Return TradePreview
+    FE-->>User: Display trade preview with visuals
+    User->>FE: Confirm trade
+    FE->>OMS: executeTrade(tradeDetails)
+    OMS->>OMS: Validate trade
+    OMS->>IG: routeOrder(order)
+    IG->>IG: Translate order format
+    IG->>FSP: submitOrder(translatedOrder)
+    FSP-->>IG: Order result
+    IG-->>OMS: Return execution details
+    OMS->>OMS: Create position records
+    OMS-->>FE: Return TradeResult
+    FE-->>User: Display confirmation
+
+sequenceDiagram
+    participant User
+    participant FE as Frontend
+    participant PS as PortfolioService
+    participant MDS as MarketDataService
+    participant OMS as OrderManagementService
+    participant NS as NotificationService
+    participant IG as IntegrationGateway
+    participant FSP as FinancialServiceProvider
+    
+    User->>FE: View portfolio
+    FE->>PS: getPositions(userId)
+    PS->>IG: syncPositions(userId)
+    IG->>FSP: getPositions(accountId)
+    FSP-->>IG: Current positions
+    IG-->>PS: Updated positions
+    PS->>MDS: getLatestPricing(positionSymbols)
+    MDS-->>PS: Current market data
+    PS->>PS: Calculate P/L and metrics
+    PS-->>FE: Return Position[] with metrics
+    FE-->>User: Display portfolio overview
+    
+    User->>FE: Select position for details
+    FE->>PS: getPositionDetails(positionId)
+    PS->>MDS: getMarketData(symbol)
+    MDS-->>PS: Full market data
+    PS->>PS: Calculate detailed metrics
+    PS-->>FE: Return PositionDetail
+    FE-->>User: Display position details and options
+    
+    User->>FE: Close position
+    FE->>OMS: closePosition(positionId)
+    OMS->>PS: getPositionDetails(positionId)
+    PS-->>OMS: Position data
+    OMS->>OMS: Create closing order
+    OMS->>IG: routeOrder(closingOrder)
+    IG->>FSP: submitOrder(translatedOrder)
+    FSP-->>IG: Order result
+    IG-->>OMS: Execution details
+    OMS->>PS: updatePosition(positionId, closedStatus)
+    PS-->>OMS: Updated position
+    OMS->>NS: createNotification(userId, "Position Closed")
+    NS-->>OMS: Notification created
+    OMS-->>FE: Return close result
+    FE-->>User: Display confirmation
+
+sequenceDiagram
+    participant User
+    participant FE as Frontend
+    participant ECS as EducationContentService
+    participant UPS as UserProfileService
+    participant OMS as OrderManagementService
+    
+    User->>FE: Browse educational content
+    FE->>ECS: getContentModules()
+    ECS-->>FE: List of modules
+    FE-->>User: Display content library
+    
+    User->>FE: View specific content
+    FE->>ECS: getContentDetails(contentId)
+    ECS-->>FE: Return content
+    FE-->>User: Display content
+    User->>FE: Complete content
+    FE->>ECS: trackContentProgress(userId, contentId, 100)
+    ECS->>UPS: updateUserExperience(userId, contentId)
+    UPS-->>ECS: Updated user profile
+    ECS-->>FE: Return ProgressUpdate
+    FE-->>User: Show completion status
+    
+    Note over User,OMS: Contextual education during trading
+    User->>FE: Start trade with new strategy
+    FE->>ECS: getRelevantContent(strategyId, userId)
+    ECS->>UPS: getUserExperienceLevel(userId)
+    UPS-->>ECS: Experience level
+    ECS->>ECS: Find relevant content
+    ECS-->>FE: Educational content snippets
+    FE-->>User: Display tooltips and links
+    User->>FE: Click to learn more
+    FE->>FE: Show educational overlay
+    User->>FE: Continue with trade
+
+sequenceDiagram
+    participant User
+    participant FE as Frontend
+    participant WS as WebSocketService
+    participant MDS as MarketDataService
+    participant NS as NotificationService
+    participant PS as PortfolioService
+    participant FSP as FinancialServiceProvider
+    
+    User->>FE: Login to platform
+    FE->>WS: establishConnection(userId, authToken)
+    WS-->>FE: Connection established
+    
+    FE->>MDS: subscribeToSymbols(watchlistSymbols)
+    MDS->>MDS: Register subscription
+    
+    loop Real-time Updates
+        FSP->>MDS: Price update event
+        MDS->>WS: broadcastUpdate(subscribers, priceData)
+        WS-->>FE: Send price update
+        FE-->>User: Update price display
+        
+        Note over PS,NS: Price alert triggered
+        PS->>PS: Check alert conditions
+        PS->>NS: createNotification(userId, alertData)
+        NS->>WS: sendNotification(userId, notification)
+        WS-->>FE: Push notification
+        FE-->>User: Display alert
+    end
+    
+    User->>FE: Open different page
+    FE->>MDS: updateSubscriptions(newSymbols)
+    MDS->>MDS: Update subscription list
+    
+    User->>FE: Logout
+    FE->>WS: closeConnection()
+    WS->>WS: Remove subscriptions
+    WS-->>FE: Connection closed

@@ -1,0 +1,256 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  experienceLevel   String   @default("beginner")
+  isAdmin           Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  emailVerified     Boolean  @default(false)
+  twoFactorEnabled  Boolean  @default(false)
+
+  // Relations
+  preferences       UserPreference?
+  accounts          FinancialAccount[]
+  providerConnections ProviderConnection[]
+  watchlists        Watchlist[]
+  trades            Trade[]
+  positions         Position[]
+  notifications     Notification[]
+
+  // Trading relationships
+  portfolio         Portfolio?
+  orders            Order[]
+
+  @@map("users")
+}
+
+model UserPreference {
+  id                  String @id @default(cuid())
+  userId              String @unique
+  notificationSettings Json   @default("{}")
+  uiPreferences       Json   @default("{}")
+  riskTolerance       Json   @default("{}")
+
+  // Relations
+  user                User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model FinancialAccount {
+  id            String   @id @default(cuid())
+  userId        String
+  providerId    String
+  accountNumber String
+  accountType   String
+  status        String   @default("active") // AccountStatus enum
+  balance       Float    @default(0)
+  buyingPower   Float    @default(0)
+  linkedAt      DateTime @default(now())
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions     Position[]
+
+  @@map("financial_accounts")
+}
+
+model ProviderConnection {
+  id                  String   @id @default(cuid())
+  userId              String
+  providerName        String
+  accessToken         String
+  refreshToken        String
+  tokenExpiresAt      DateTime
+  connectionMetadata  Json     @default("{}")
+  isActive            Boolean  @default(true)
+
+  // Relations
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("provider_connections")
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WatchlistItem[]
+
+  @@map("watchlists")
+}
+
+model WatchlistItem {
+  id          String   @id @default(cuid())
+  watchlistId String
+  symbol      String
+  addedAt     DateTime @default(now())
+  customNotes Json?
+
+  // Relations
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+
+  @@map("watchlist_items")
+}
+
+model TradingIntention {
+  id            String @id @default(cuid())
+  name          String
+  description   String
+  parameters    Json   @default("{}")
+  intentionType String
+
+  @@map("trading_intentions")
+}
+
+model Strategy {
+  id                    String @id @default(cuid())
+  name                  String
+  plainTextDescription  String
+  technicalDescription  String
+  parameters            Json   @default("{}")
+  riskProfile           Json   @default("{}")
+
+  // Relations
+  trades                Trade[]
+
+  @@map("strategies")
+}
+
+model Trade {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId     String
+  symbol      String
+  side        String   // 'buy', 'sell'
+  quantity    Int
+  price       Float
+  tradeType   String   // 'stock', 'call', 'put'
+  strike      Float?   // For options
+  expiration  String?  // For options
+  commission  Float    @default(0.0)
+  totalAmount Float
+  createdAt   DateTime @default(now())
+
+  // Add missing relation for Strategy
+  strategyId  String?
+  strategy    Strategy? @relation(fields: [strategyId], references: [id])
+}
+
+model Position {
+  id           String   @id @default(cuid())
+  portfolioId  String
+  portfolio    Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol       String
+  type         String   // 'stock', 'call', 'put'
+  quantity     Int
+  avgPrice     Float
+  currentPrice Float
+  unrealizedPnL Float   @default(0.0)
+  realizedPnL  Float    @default(0.0)
+  strike       Float?   // For options
+  expiration   String?  // For options
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Add missing relation for FinancialAccount
+  accountId    String?
+  account      FinancialAccount? @relation(fields: [accountId], references: [id])
+}
+
+model MarketData {
+  id           String   @id @default(cuid())
+  symbol       String   @unique
+  lastPrice    Float
+  bid          Float
+  ask          Float
+  volume       Int
+  timestamp    DateTime @default(now())
+  optionsChain Json     @default("{}")
+
+  @@map("market_data")
+}
+
+model EducationalContent {
+  id              String @id @default(cuid())
+  title           String
+  contentType     String // 'article' | 'video' | 'interactive'
+  difficultyLevel String // ExperienceLevel enum
+  contentUrl      String
+  relatedConcepts String[]
+  triggers        String[]
+
+  @@map("educational_content")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // 'trade', 'alert', 'system'
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Portfolio {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cash      Float    @default(10000.0) // Starting cash
+  totalValue Float   @default(10000.0)
+  dayPnL    Float    @default(0.0)
+  totalPnL  Float    @default(0.0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  positions Position[]
+}
+
+model Order {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol         String
+  type           String   // 'market', 'limit', 'stop'
+  side           String   // 'buy', 'sell'
+  quantity       Int
+  price          Float?   // null for market orders
+  status         String   @default("pending") // 'pending', 'filled', 'cancelled', 'rejected'
+  filledQuantity Int      @default(0)
+  filledPrice    Float?
+  orderType      String   // 'stock', 'call', 'put'
+  strike         Float?   // For options
+  expiration     String?  // For options
+  commission     Float    @default(0.0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  filledAt       DateTime?
+} 

@@ -1,0 +1,42 @@
+{
+  "name": "simple-options-trader",
+  "version": "1.0.0",
+  "description": "A comprehensive trading platform with real-time stock and options trading",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd shadcn-ui && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../shadcn-ui && npm install",
+    "build": "cd backend && npm run build && cd ../shadcn-ui && npm run build",
+    "lint": "cd backend && npm run lint && cd ../shadcn-ui && npm run lint",
+    "format": "cd backend && npm run format && cd ../shadcn-ui && npm run format",
+    "test": "cd backend && npm test && cd ../shadcn-ui && npm test"
+  },
+  "keywords": [
+    "trading",
+    "stocks",
+    "options",
+    "finance",
+    "react",
+    "nodejs",
+    "typescript"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
+    "concurrently": "^8.2.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/simple-options-trader.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/simple-options-trader/issues"
+  },
+  "homepage": "https://github.com/yourusername/simple-options-trader#readme"
+}

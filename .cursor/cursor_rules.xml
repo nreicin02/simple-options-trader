@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SimpliOptions Project Guidelines & Coding Standards – Consolidated
+
+  === Project Guidelines (from uploaded PRD) ===
+  Product Goals:
+    1. Simplify options trading with plain-language descriptions for casual retail investors. fileciteturn2file0
+    2. Reduce trading barriers via streamlined onboarding, education, and decision-making flows. fileciteturn2file0
+    3. Enable seamless integration with financial service providers for execution, portfolio management, and compliance. fileciteturn2file0
+
+  P0 (Must-Have Features): fileciteturn2file10
+    • Plain-language conversion of terminology
+    • Intention-based trade selection (e.g., 'I think X will rise by Y')
+    • Visual risk/outcome charts
+    • Core strategies: calls, puts, covered/protective
+    • Integration with ≥1 major provider API
+    • Onboarding with basic education
+    • Transparent fees, break-even, max loss display
+    • Mobile-responsive core UI
+    • Real-time options pricing
+    • Account management & portfolio view
+
+  P1 (Should-Have Features): fileciteturn2file10
+    • Interactive tutorials & first-trade guidance
+    • Scenario-based learning within flow
+    • Personalized dashboard & watchlists
+    • Expanded strategy library
+    • Multi-provider integrations
+    • Paper-trading mode
+    • Anonymized social trade feed
+    • Alerts & notifications system
+    • Advanced filtering options
+    • Historical performance metrics
+
+  P2 (Nice-to-Have Features): fileciteturn2file10
+    • AI-driven strategy suggestions
+    • Enhanced chain visualization with plain-language tooltips
+    • Community forums & moderation
+    • Tax-service integrations
+    • Custom strategy builder & risk assessment
+    • Automated roll of positions
+    • Sentiment analysis summaries
+    • Portfolio stress testing
+    • Video-based educational content
+    • Developer API access
+
+  UI Guidelines (Homepage & Flow): fileciteturn2file11
+    • Dashboard: minimal, watchlist, plain summaries
+    • Trade Flow: intention → strategy suggestion → customization → review & execute
+    • Learning: contextual tooltips, expandable 'Learn More'
+    • Mobile: bottom nav, touch-friendly, responsive breakpoints
+-->
+<cursorRules>
+  <!-- === Project Guidelines Enforcement === -->
+  <rule id="GUIDELINES_COMMENT_BLOCK" severity="info">
+    <description>Refer to the embedded guidelines comment at the top to ensure all PRD requirements are implemented.</description>
+    <files>/.cursor/rules.xml</files>
+    <pattern>SimpliOptions Project Guidelines & Coding Standards</pattern>
+  </rule>
+
+  <!-- === Core Coding Practices === -->
+  <rule id="ESLINT_CONFIG" severity="error">
+    <description>Project must include ESLint configuration (.eslintrc.json) with zero errors.</description>
+    <files>/.eslintrc.json</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <rule id="PRETTIER_CONFIG" severity="error">
+    <description>Prettier configuration (.prettierrc) must exist and enforce formatting.</description>
+    <files>/.prettierrc</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <rule id="FORMAT_CHECK" severity="error">
+    <description>All source files (ts,tsx,js,jsx) must pass Prettier with no diffs.</description>
+    <files>src/**/*.{ts,tsx,js,jsx}</files>
+    <pattern>^(?!.*)</pattern>
+  </rule>
+
+  <rule id="TYPESCRIPT_STRICT" severity="error">
+    <description>tsconfig.json must enable strict type checking ('strict': true).</description>
+    <files>/tsconfig.json</files>
+    <pattern>"strict"\s*:\s*true</pattern>
+  </rule>
+
+  <!-- === Testing & Quality === -->
+  <rule id="UNIT_TESTS_PRESENT" severity="error">
+    <description>Each feature folder in src must include at least one *.test.ts[x] file.</description>
+    <files>src/**/!(*.test).{ts,tsx}</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <rule id="TEST_FRAMEWORK" severity="warning">
+    <description>Use Vitest, Jest, or Mocha for unit testing as declared in package.json.</description>
+    <files>/package.json</files>
+    <pattern>"(vitest|jest|mocha)":</pattern>
+  </rule>
+
+  <rule id="CODE_COVERAGE" severity="warning">
+    <description>Maintain test coverage ≥80%; ensure coverage/index.html exists.</description>
+    <files>/coverage/**/index.html</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <!-- === Documentation & Onboarding === -->
+  <rule id="README_GUIDELINES_SECTION" severity="error">
+    <description>README.md must include 'Project Goals', 'Tech Stack', 'UX Guidelines', and 'Roadmap' sections.</description>
+    <files>/README.md</files>
+    <pattern>##\s+(Project Goals|Tech Stack|UX Guidelines|Roadmap)</pattern>
+  </rule>
+
+  <rule id="CHANGELOG_UPDATED" severity="warning">
+    <description>CHANGELOG.md should be updated on each version bump or major change.</description>
+    <files>/CHANGELOG.md</files>
+    <pattern>##\s+\[\d+\.\d+\.\d+\]</pattern>
+  </rule>
+
+  <rule id="DEPENDENCIES_LOCK" severity="error">
+    <description>Lockfile (package-lock.json or yarn.lock) must be present and up-to-date.</description>
+    <files>/(package-lock.json|yarn.lock)</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <rule id="SECURITY_SCAN" severity="warning">
+    <description>Run 'npm audit' (or equivalent) and fix all high/critical vulnerabilities.</description>
+    <files>/package.json</files>
+    <pattern>"audit"</pattern>
+  </rule>
+
+  <!-- === Integration & Services === -->
+  <rule id="INTEGRATION_GATEWAY" severity="error">
+    <description>Ensure src/services/IntegrationGateway.ts exists for all provider integrations.</description>
+    <files>src/services/IntegrationGateway.ts</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <rule id="REALTIME_DATA" severity="warning">
+    <description>Use WebSocket (socket.io) in MarketDataService; avoid REST polling for real-time data.</description>
+    <files>src/services/MarketDataService.ts</files>
+    <pattern>import\s+.*socket\.io-client</pattern>
+  </rule>
+
+  <rule id="RISK_CHARTS" severity="warning">
+    <description>Risk/outcome charts must use D3.js or Chart.js in src/components/charts/</description>
+    <files>src/components/charts/**/*.{ts,tsx}</files>
+    <pattern>from\s+"(d3|chart\.js)"</pattern>
+  </rule>
+
+  <!-- === Collaboration & Repo Hygiene === -->
+  <rule id="CONVENTIONAL_COMMITS" severity="error">
+    <description>Commits must follow Conventional Commits format (type(scope): description).</description>
+    <files>/.git/COMMIT_EDITMSG</files>
+    <pattern>^(feat|fix|docs|style|refactor|perf|test|chore)(\([^)]*\))?:\s.+</pattern>
+  </rule>
+
+  <rule id="PR_TEMPLATE" severity="warning">
+    <description>PRs must reference reviewed guidelines; include link to docs/project-guidelines.md if changed.</description>
+    <files>/.github/PULL_REQUEST_TEMPLATE.md</files>
+    <pattern>Review docs/project-guidelines.md</pattern>
+  </rule>
+
+  <rule id="NO_TODO_COMMENTS" severity="warning">
+    <description>Remove all TODO/FIXME comments before merging; no unfinished code markers.</description>
+    <files>src/**/*.{ts,tsx,js,jsx}</files>
+    <pattern>TODO|FIXME</pattern>
+  </rule>
+
+  <!-- === Infrastructure & Deployment === -->
+  <rule id="DOCKERFILE" severity="error">
+    <description>Include a Dockerfile at project root with build & run instructions.</description>
+    <files>/Dockerfile</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <rule id="K8S_MANIFESTS" severity="warning">
+    <description>Kubernetes manifests must reside under /k8s/ for staging & production deployments.</description>
+    <files>/k8s/**/*.{yaml,yml}</files>
+    <pattern>.*</pattern>
+  </rule>
+
+  <rule id="README_DEPLOYMENT" severity="warning">
+    <description>README.md must document deployment steps (Docker, Kubernetes, cloud provider).</description>
+    <files>/README.md</files>
+    <pattern>##\s+Deployment</pattern>
+  </rule>
+</cursorRules>
