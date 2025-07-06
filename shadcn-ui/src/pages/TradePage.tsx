@@ -28,6 +28,8 @@ import { formatCurrency, formatPercentage, formatDate, formatNumber } from '@/ut
 import { useTradeState } from '@/hooks/useTradeState';
 import { useStockData, useFinancialData, usePortfolioData, usePositionsData, useOrdersData, useTradesData } from '@/hooks/useApi';
 import MockDataNotice from '@/components/MockDataNotice';
+import { useChat } from '@/contexts/ChatContext';
+import { Textarea } from '@/components/ui/textarea';
 
 interface StockData {
   symbol: string;
@@ -60,8 +62,16 @@ interface OptionData {
   openInterest: number;
 }
 
-export default function TradePage() {
+interface TradePageProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+}
+
+export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
   const [state, actions] = useTradeState();
+  const { messages, sendMessage, resetConversation } = useChat();
+  const [chatInput, setChatInput] = React.useState('');
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
   
   // API hooks
   const stockDataHook = useStockData();
@@ -565,11 +575,14 @@ export default function TradePage() {
     }
   }, [state.trades, state.performanceTimeframe]);
 
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Mock Data Notice */}
       <MockDataNotice className="mb-4" />
-      
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Trading Dashboard</h1>
         <div className="flex gap-2">
@@ -579,9 +592,8 @@ export default function TradePage() {
           </Button>
         </div>
       </div>
-
-      <Tabs value={state.activeTab} onValueChange={actions.setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-9">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="trading">Trading</TabsTrigger>
           <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
           <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
@@ -590,14 +602,8 @@ export default function TradePage() {
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="financial">
-            Financial Data
-            {state.financialData?.overview?.Symbol && (
-              <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
-                {state.financialData.overview.Symbol}
-              </span>
-            )}
-          </TabsTrigger>
+          <TabsTrigger value="financial">Financial Data</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trading" className="space-y-6">
@@ -1631,6 +1637,38 @@ export default function TradePage() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="chat" className="space-y-6">
+          <Card className="w-full max-w-2xl mx-auto flex flex-col h-[70vh] rounded-2xl shadow-xl">
+            <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-gray-50 to-white">
+              {messages.length === 0 && (
+                <div className="text-center text-gray-400 text-base mt-16">Ask anything about stocks or options…</div>
+              )}
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`mb-4 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <span className={`max-w-[75%] px-4 py-2 rounded-2xl shadow text-base whitespace-pre-line ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-br-md' : 'bg-gray-200 text-gray-900 rounded-bl-md'}`}>{msg.text}</span>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+            <div className="p-4 border-t bg-white flex gap-2 items-end">
+              <Textarea
+                className="flex-1 resize-none rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500"
+                rows={2}
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(chatInput); setChatInput(''); } }}
+                placeholder="Type your message..."
+              />
+              <Button onClick={() => { sendMessage(chatInput); setChatInput(''); }} disabled={!chatInput.trim()} className="rounded-lg px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow">
+                Send
+              </Button>
+            </div>
+            <Button variant="outline" className="m-2 self-end" onClick={resetConversation}>
+              Start New Conversation
+            </Button>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

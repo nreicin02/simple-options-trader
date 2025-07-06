@@ -211,7 +211,7 @@ const Index: React.FC = () => {
               <Link to="/trade">Get Started <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
-        </div>
+      </div>
       </section>
     </div>
   );

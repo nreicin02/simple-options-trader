@@ -3,16 +3,13 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import compression from 'compression';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import logger from './config/logger';
 import router from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 
