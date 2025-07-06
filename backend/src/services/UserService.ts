@@ -2,12 +2,14 @@ import { prisma } from '../config/database';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import env from '../config/env';
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  experienceLevel: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -21,7 +23,7 @@ class UserService {
     if (!parsed.success) {
       throw new Error('Invalid input');
     }
-    const { email, password, firstName, lastName } = parsed.data;
+    const { email, password, firstName, lastName, experienceLevel } = parsed.data;
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new Error('User already exists');
@@ -33,15 +35,21 @@ class UserService {
         passwordHash,
         firstName,
         lastName,
-        experienceLevel: 'beginner',
+        experienceLevel: experienceLevel || 'beginner',
         emailVerified: false,
         twoFactorEnabled: false,
       },
     });
     // Remove passwordHash from returned user
-    const userSafe = { ...user } as any;
-    delete userSafe.passwordHash;
-    return userSafe;
+    const { passwordHash: _, ...userWithoutPassword } = user;
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      env.JWT_SECRET!,
+      { expiresIn: '24h' }
+    );
+
+    return { user: userWithoutPassword, token };
   }
 
   static async login(email: string, password: string) {
@@ -60,11 +68,14 @@ class UserService {
     // Generate JWT
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env['JWT_SECRET'] || 'changeme',
+      env.JWT_SECRET || 'changeme',
       { expiresIn: '7d' }
     );
-    return { token };
+
+    const { passwordHash: _, ...userWithoutPassword } = user;
+
+    return { user: userWithoutPassword, token };
   }
 }
 
-export default UserService; 
+export default UserService;

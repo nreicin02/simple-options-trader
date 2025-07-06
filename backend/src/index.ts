@@ -57,14 +57,15 @@ app.use((req: Request, res: Response) => {
 });
 
 // Error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(err.stack || err.message);
-  res.status(500).json({ error: 'Internal Server Error' });
-});
+import { errorHandler } from './middleware/errorHandler';
+
+app.use(errorHandler);
+
+import env from './config/env';
 
 // Start server if not in test mode
-if (process.env['NODE_ENV'] !== 'test') {
-  const port = process.env['PORT'] || 4000;
+if (env.NODE_ENV !== 'test') {
+  const port = env.PORT || 4000;
   (async () => {
     try {
       await connectDatabase();

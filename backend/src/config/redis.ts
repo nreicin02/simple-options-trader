@@ -1,8 +1,10 @@
 import { createClient } from 'redis';
 
+import env from './env';
+
 // Redis client configuration
 const redisClient = createClient({
-  url: process.env['REDIS_URL'] || 'redis://localhost:6379',
+  url: env.REDIS_URL || 'redis://localhost:6379',
   socket: {
     reconnectStrategy: (retries) => Math.min(retries * 50, 500),
   },

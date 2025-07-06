@@ -1,3 +1,5 @@
+import env from '../config/env';
+
 // Test setup file
 process.env['NODE_ENV'] = 'test';
 process.env['JWT_SECRET'] = 'test-secret';

@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 
+import env from './env';
+
 // Prisma client instance
 export const prisma = new PrismaClient({
-  log: process.env['NODE_ENV'] === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log: env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 
 // Database connection management

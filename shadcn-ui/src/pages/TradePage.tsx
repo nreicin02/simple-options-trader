@@ -107,8 +107,8 @@ export default function TradePage() {
       if (data) {
         actions.setStockData(data);
       }
-    } catch (error) {
-      console.error('Error fetching stock data:', error);
+  } catch (error) {
+    console.error('Error fetching stock data:', error);
       toast.error('Failed to fetch stock data');
     }
   };
@@ -251,7 +251,7 @@ export default function TradePage() {
     } catch (error) {
       toast.error('Failed to place option order');
       console.error('Error placing option order:', error);
-    } finally {
+      } finally {
       actions.setLoading(false);
     }
   };
