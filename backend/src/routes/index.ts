@@ -4,7 +4,6 @@ import marketRoutes from './market';
 import tradingRoutes from './trading';
 // import authRoutes from './authRoutes';
 // import other domain routes as needed
-import express from 'express';
 import { getOpenAIChatCompletion } from '../services/OpenAIService';
 
 const router = Router();
@@ -22,9 +21,9 @@ router.post('/chat', async (req, res) => {
       return res.status(400).json({ error: 'messages must be an array' });
     }
     const aiResponse = await getOpenAIChatCompletion(messages);
-    res.json({ response: aiResponse });
+    return res.json({ response: aiResponse });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'OpenAI error' });
+    return res.status(500).json({ error: error.message || 'OpenAI error' });
   }
 });
 

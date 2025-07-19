@@ -146,10 +146,10 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       },
     });
 
-    res.json({ order, trade, portfolio });
+    return res.json({ order, trade, portfolio });
   } catch (error) {
     console.error('Order placement error:', error);
-    res.status(500).json({ message: 'Order placement failed', error: error.message });
+    return res.status(500).json({ message: 'Order placement failed', error: (error as Error).message });
   }
 });
 
@@ -158,9 +158,9 @@ router.get('/orders', authenticateToken, async (req: Request, res: Response) => 
   try {
     const { userId } = (req as AuthRequest).user;
     const orders = await prisma.order.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
-    res.json(orders);
+    return res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch orders' });
+    return res.status(500).json({ message: 'Failed to fetch orders' });
   }
 });
 
@@ -169,9 +169,9 @@ router.get('/trades', authenticateToken, async (req: Request, res: Response) => 
   try {
     const { userId } = (req as AuthRequest).user;
     const trades = await prisma.trade.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
-    res.json(trades);
+    return res.json(trades);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch trades' });
+    return res.status(500).json({ message: 'Failed to fetch trades' });
   }
 });
 
@@ -180,9 +180,9 @@ router.get('/portfolio', authenticateToken, async (req: Request, res: Response) 
   try {
     const { userId } = (req as AuthRequest).user;
     const portfolio = await prisma.portfolio.findUnique({ where: { userId } });
-    res.json(portfolio);
+    return res.json(portfolio);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch portfolio' });
+    return res.status(500).json({ message: 'Failed to fetch portfolio' });
   }
 });
 
@@ -191,9 +191,9 @@ router.get('/positions', authenticateToken, async (req: Request, res: Response) 
   try {
     const { userId } = (req as AuthRequest).user;
     const positions = await prisma.position.findMany({ where: { userId } });
-    res.json(positions);
+    return res.json(positions);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch positions' });
+    return res.status(500).json({ message: 'Failed to fetch positions' });
   }
 });
 

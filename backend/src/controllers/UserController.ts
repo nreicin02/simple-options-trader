@@ -47,9 +47,9 @@ class UserController {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      res.json(user);
+      return res.json(user);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -78,9 +78,9 @@ class UserController {
         }
       });
 
-      res.json(user);
+      return res.json(user);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }

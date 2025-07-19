@@ -1,45 +1,48 @@
 # Simple Options Trader
 
-A modern, full-stack options trading platform for simulating stock and options trades, tracking portfolios, and analyzing financial data. Built with React, TypeScript, Node.js, and PostgreSQL.
+A modern, full-stack options trading platform with AI-powered insights, comprehensive options analysis, and real-time portfolio management. Built with React, TypeScript, Node.js, and PostgreSQL.
 
 ---
 
 ## 🚀 Features
 
-### Real-Time Stock Data
-- Fetches live stock quotes and market data from Alpha Vantage API
+### 🤖 AI-Powered Trading Assistant
+- **Natural Language Chat Interface** - Ask questions about trading strategies, market analysis, and options concepts
+- **AI Trading Advisor** - Get personalized options strategy recommendations based on market conditions and risk profile
+- **Intelligent Risk Management** - AI-powered portfolio analysis and risk alerts
+- **Strategy Recommendations** - Receive AI-generated trading suggestions with confidence scores
+
+### 📈 Enhanced Options Trading
+- **Comprehensive Options Chain** - View calls and puts with real-time pricing and Greeks
+- **Advanced Strategy Builder** - Create complex multi-leg options strategies (spreads, straddles, iron condors)
+- **Options Calculator** - Black-Scholes pricing model with Greeks calculation and profit/loss scenarios
+- **Portfolio Greeks Exposure** - Monitor Delta, Gamma, Theta, and Vega across your entire portfolio
+- **Risk Management Tools** - Position sizing, stress testing, and automated risk alerts
+
+### 💹 Real-Time Market Data
+- Live stock quotes and market data from Alpha Vantage API
 - **Automatic fallback to mock data** with user notification if API rate limits are reached
-- Supports major tickers (AAPL, TSLA, MSFT, etc.) and custom symbols
+- Interactive price charts with multiple timeframes (1D, 1W, 1M, 3M)
+- Comprehensive financial data including income statements, balance sheets, and ratios
 
-### Options Trading Simulation
-- View options chains for supported stocks
-- Simulate buying/selling call and put options
-- Calculates Greeks (Delta, Gamma, Theta, Vega) and risk metrics
-- Expiration and strike selection
+### 📊 Portfolio Management
+- Real-time portfolio tracking with P&L calculations
+- Position management with average cost and unrealized gains/losses
+- Trade history and order management
+- Watchlist functionality with real-time updates
 
-### Portfolio Management
-- Track open positions, cash, and P&L in real time
-- View day and total P&L, market value, and trade history
-- Realistic order placement and position tracking
+### 🎨 Modern UI/UX
+- **Sleek, Professional Interface** - Built with shadcn/ui and Tailwind CSS
+- **Responsive Design** - Optimized for desktop, tablet, and mobile devices
+- **Intuitive Navigation** - Clean tab-based interface with logical grouping
+- **Interactive Components** - Hover tooltips, real-time updates, and smooth animations
+- **Accessibility Features** - Proper contrast, keyboard navigation, and screen reader support
 
-### Financial Analytics
-- Company overview, sector, and market cap
-- Income statement, balance sheet, and cash flow data
-- Recent earnings and financial ratios
-
-### Watchlist
-- Add/remove stocks to a personal watchlist
-- View real-time data for all watchlist symbols
-
-### User Authentication
-- Secure registration and login with JWT
+### 🔐 User Authentication & Security
+- Secure JWT-based authentication
 - User experience level selection
-- Protected routes for trading and portfolio
-
-### Responsive UI & UX
-- Built with shadcn/ui and Tailwind CSS for a modern, mobile-friendly interface
-- Interactive charts (Recharts) for price and volume history
-- Smart notifications for API status, errors, and mock data usage
+- Protected routes and API endpoints
+- Session management and auto-logout
 
 ---
 
@@ -47,24 +50,26 @@ A modern, full-stack options trading platform for simulating stock and options t
 
 ### Frontend
 - **React 18** + **TypeScript**
-- **Vite** for fast development
-- **shadcn/ui** for UI components
-- **Tailwind CSS** for styling
-- **Recharts** for data visualization
-- **React Router** for navigation
+- **Vite** for fast development and building
+- **shadcn/ui** for modern, accessible UI components
+- **Tailwind CSS** for utility-first styling
+- **Recharts** for interactive data visualization
+- **React Router** for client-side routing
+- **OpenAI API** for AI-powered features
 
 ### Backend
 - **Node.js** + **Express** + **TypeScript**
-- **Prisma ORM** with **PostgreSQL**
-- **JWT** for authentication
-- **Alpha Vantage API** for market data
-- **Redis** for caching (optional, app works without it)
+- **Prisma ORM** with **PostgreSQL** for data persistence
+- **JWT** for secure authentication
+- **Alpha Vantage API** for real-time market data
+- **OpenAI API** for AI assistant functionality
+- **Redis** for caching (optional)
 
-### Dev Tools
-- **ESLint** & **Prettier** for code quality
-- **Vitest** for testing
+### Development & Quality
+- **ESLint** & **Prettier** for code quality and formatting
+- **TypeScript** for type safety across the stack
 - **Nodemon** for backend hot reload
-- **Concurrently** for running both servers
+- **Concurrently** for running both servers simultaneously
 
 ---
 
@@ -74,6 +79,7 @@ A modern, full-stack options trading platform for simulating stock and options t
 - Node.js 18+
 - PostgreSQL
 - Alpha Vantage API key ([get one free](https://www.alphavantage.co/))
+- OpenAI API key ([get one here](https://platform.openai.com/))
 
 ### Setup
 ```bash
@@ -84,11 +90,15 @@ npm install
 cd backend && npm install
 cd ../shadcn-ui && npm install
 
-# Set up environment variables (see docs/SETUP_GUIDE.md)
-# Example for backend/.env:
-# DATABASE_URL=postgresql://username:password@localhost:5432/simpli_options_dev
-# JWT_SECRET=your-secret
-# ALPHA_VANTAGE_API_KEY=your-api-key
+# Set up environment variables
+# Backend (.env):
+DATABASE_URL=postgresql://username:password@localhost:5432/simpli_options_dev
+JWT_SECRET=your-secret-key
+ALPHA_VANTAGE_API_KEY=your-alpha-vantage-key
+OPENAI_API_KEY=your-openai-key
+
+# Frontend (.env):
+VITE_API_URL=http://localhost:4000
 
 # Set up database
 cd backend
@@ -111,7 +121,29 @@ npm run dev
 
 ---
 
-## 📊 Example API Endpoints
+## 🎯 Key Features in Detail
+
+### AI Trading Assistant
+- **Natural Language Interface**: Ask questions like "What's a good options strategy for a bullish outlook on AAPL?"
+- **Strategy Recommendations**: Get AI-generated suggestions based on market conditions and your risk profile
+- **Educational Content**: Learn about options trading concepts and strategies
+- **Risk Analysis**: AI-powered portfolio risk assessment and alerts
+
+### Options Trading Suite
+- **Options Chain Display**: View all available calls and puts with real-time data
+- **Strategy Builder**: Create complex strategies with visual payoff diagrams
+- **Greeks Calculator**: Real-time calculation of Delta, Gamma, Theta, and Vega
+- **Risk Management**: Portfolio-wide Greeks exposure monitoring
+
+### Portfolio Analytics
+- **Real-time P&L**: Track day and total profit/loss
+- **Position Management**: Monitor individual positions with cost basis
+- **Trade History**: Complete record of all trades and orders
+- **Performance Metrics**: Portfolio performance analysis
+
+---
+
+## 📊 API Endpoints
 
 ### Authentication
 - `POST /api/users/register` — Register a new user
@@ -129,67 +161,98 @@ npm run dev
 - `GET /api/market/financial/:symbol` — Get comprehensive financial data
 - `GET /api/market/options/:symbol` — Get options chain data
 
+### AI Features
+- `POST /api/ai/chat` — AI chat assistant
+- `POST /api/ai/advisor` — AI trading recommendations
+
 ---
 
-## 🔔 API Rate Limits & Mock Data
-If the Alpha Vantage API rate limit is reached, the app automatically switches to mock data and displays a notification to users. This ensures uninterrupted demo and development experience.
+## 🔔 Smart Data Management
+The platform intelligently manages API rate limits by:
+- **Caching** frequently requested data
+- **Automatic fallback** to realistic mock data when limits are reached
+- **User notifications** about data source status
+- **Seamless switching** between real and mock data
 
 ---
 
 ## 🏗️ Project Structure
 ```
 simple-options-trader/
-├── backend/                # Backend API server (Node.js, Express, Prisma)
-│   ├── src/                # Source code for backend
-│   │   ├── routes/         # Express route handlers (API endpoints)
-│   │   ├── controllers/    # Business logic for each route
-│   │   ├── services/       # Service layer (database, external APIs)
-│   │   ├── middleware/     # Express middleware (auth, error handling)
-│   │   ├── config/         # Configuration files (db, logger, redis)
-│   │   └── types/          # TypeScript types
-│   ├── prisma/             # Prisma schema and migrations
-│   ├── .env                # Backend environment variables
-│   └── ...                 # Backend config, scripts, etc.
-├── shadcn-ui/              # Frontend React app
-│   ├── src/                # Source code for frontend
-│   │   ├── components/     # Reusable React components (UI, layout, etc.)
-│   │   ├── pages/          # Page components (TradePage, PortfolioPage, etc.)
+├── backend/                # Backend API server
+│   ├── src/
+│   │   ├── routes/         # API endpoints
+│   │   ├── controllers/    # Business logic
+│   │   ├── services/       # External APIs and database
+│   │   ├── middleware/     # Auth, validation, error handling
+│   │   ├── config/         # Database, Redis, logging
+│   │   └── types/          # TypeScript definitions
+│   ├── prisma/             # Database schema and migrations
+│   └── .env                # Environment variables
+├── shadcn-ui/              # Frontend React application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   │   ├── ui/         # shadcn/ui components
+│   │   │   └── ...         # Custom components
+│   │   ├── pages/          # Main application pages
 │   │   ├── hooks/          # Custom React hooks
-│   │   ├── contexts/       # React context providers (auth, state)
-│   │   ├── utils/          # Utility functions (formatters, helpers)
-│   │   └── index.css       # Global styles
-│   ├── public/             # Static assets (favicon, robots.txt)
-│   ├── .env                # Frontend environment variables
-│   └── ...                 # Frontend config, scripts, etc.
-├── docs/                   # Documentation (API, setup, deployment, etc.)
-├── .gitignore              # Git ignore rules
-├── package.json            # Project metadata and scripts
-├── README.md               # Project overview and instructions
-└── ...                     # Other config, diagrams, scripts
+│   │   ├── contexts/       # State management
+│   │   ├── services/       # API client and utilities
+│   │   └── utils/          # Helper functions
+│   ├── public/             # Static assets
+│   └── .env                # Frontend environment
+├── docs/                   # Documentation
+└── ...                     # Configuration files
 ```
+
+---
+
+## 🚀 Recent Updates
+
+### v2.0 - AI Integration & Enhanced Options Trading
+- ✅ **AI Chat Assistant** with natural language interface
+- ✅ **Advanced Options Strategy Builder** with visual payoff diagrams
+- ✅ **Comprehensive Options Calculator** with Black-Scholes model
+- ✅ **Portfolio Greeks Exposure** monitoring
+- ✅ **AI Trading Advisor** with personalized recommendations
+- ✅ **Enhanced UI/UX** with improved spacing, typography, and responsiveness
+- ✅ **Risk Management Tools** with automated alerts
+- ✅ **Professional Interface** with consistent design system
+
+### v1.0 - Core Platform
+- ✅ Real-time stock data and portfolio management
+- ✅ Basic options trading simulation
+- ✅ User authentication and security
+- ✅ Financial data and analytics
+- ✅ Watchlist and trade history
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+### Development Workflow
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ---
 
-## 🛠️ Troubleshooting & FAQ
+## 🛠️ Troubleshooting
 
-### Port 4000 already in use / EADDRINUSE
-- Stop any other process using port 4000: `lsof -ti:4000 | xargs kill -9`
-- Restart the backend: `npm run dev`
+### Common Issues
+- **Port conflicts**: Use `lsof -ti:4000 | xargs kill -9` to free up ports
+- **Database issues**: Ensure PostgreSQL is running and DATABASE_URL is correct
+- **API limits**: The app automatically switches to mock data with notifications
+- **Redis errors**: Redis is optional - the app works without it
 
-### Redis connection failed
-- Redis is optional. The app will work without it, but you can install Redis locally for caching.
-
-### API rate limit reached
-- The app will notify you and use mock data until the limit resets (see notification at the top of the dashboard).
-
-### Database connection issues
-- Ensure PostgreSQL is running and your `DATABASE_URL` is correct in `.env`.
+### Performance Tips
+- Enable Redis for better caching performance
+- Use production builds for better frontend performance
+- Monitor API usage to stay within rate limits
 
 ---
 
@@ -198,4 +261,4 @@ Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for g
 
 ---
 
-**Built with ❤️ for the trading community.** 
+**Built with ❤️ for the trading community. Empowering traders with AI-driven insights and professional-grade tools.** 

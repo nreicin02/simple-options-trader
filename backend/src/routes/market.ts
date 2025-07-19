@@ -191,7 +191,6 @@ function getMockStockData(symbol: string) {
 // Calculate options Greeks (simplified Black-Scholes approximations)
 function calculateGreeks(stockPrice: number, strikePrice: number, timeToExpiry: number, volatility: number, riskFreeRate: number = 0.05) {
   const d1 = (Math.log(stockPrice / strikePrice) + (riskFreeRate + 0.5 * volatility * volatility) * timeToExpiry) / (volatility * Math.sqrt(timeToExpiry));
-  const d2 = d1 - volatility * Math.sqrt(timeToExpiry);
   
   // Delta (simplified approximation)
   const delta = Math.exp(-riskFreeRate * timeToExpiry) * (0.5 + 0.5 * Math.tanh(d1 / 2));
@@ -224,10 +223,10 @@ router.get('/quote/:symbol', authenticateToken, async (req: Request, res: Respon
     const upperSymbol = symbol.toUpperCase();
     const stockData = await getRealStockQuote(upperSymbol);
     
-    res.json(stockData);
+    return res.json(stockData);
   } catch (error) {
     console.error('Error fetching stock quote:', error);
-    res.status(500).json({ message: 'Failed to fetch stock data' });
+    return res.status(500).json({ message: 'Failed to fetch stock data' });
   }
 });
 
@@ -320,17 +319,17 @@ router.get('/options/:symbol', authenticateToken, async (req: Request, res: Resp
       })
     };
     
-    res.json(optionsChain);
+    return res.json(optionsChain);
   } catch (error) {
     console.error('Error fetching options chain:', error);
-    res.status(500).json({ message: 'Failed to fetch options data' });
+    return res.status(500).json({ message: 'Failed to fetch options data' });
   }
 });
 
 // Get advanced strategy recommendations
 router.post('/strategies/recommend', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { symbol, direction, timeframe, confidence, amount, volatility, marketConditions } = req.body;
+    const { symbol, direction, timeframe, confidence, amount, volatility } = req.body;
     
     if (!symbol || !direction || !timeframe || !confidence || !amount) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -521,14 +520,14 @@ router.post('/strategies/recommend', authenticateToken, async (req: Request, res
       ]
     };
     
-    res.json({ 
+    return res.json({ 
       strategies,
       marketAnalysis,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error generating strategy recommendations:', error);
-    res.status(500).json({ message: 'Failed to generate recommendations' });
+    return res.status(500).json({ message: 'Failed to generate recommendations' });
   }
 });
 
@@ -575,45 +574,45 @@ router.get('/analysis/:symbol', authenticateToken, async (req: Request, res: Res
       ]
     };
     
-    res.json(analysis);
+    return res.json(analysis);
   } catch (error) {
     console.error('Error fetching market analysis:', error);
-    res.status(500).json({ message: 'Failed to fetch market analysis' });
+    return res.status(500).json({ message: 'Failed to fetch market analysis' });
   }
 });
 
 // Get cache status endpoint
-router.get('/cache/status', authenticateToken, async (req: Request, res: Response) => {
+router.get('/cache/status', authenticateToken, async (_req: Request, res: Response) => {
   try {
     // Clear expired entries first
     const cleared = clearExpiredCache();
     const status = getCacheStatus();
     
-    res.json({
+    return res.json({
       ...status,
       clearedEntries: cleared,
       message: 'Cache status retrieved successfully'
     });
   } catch (error) {
     console.error('Error getting cache status:', error);
-    res.status(500).json({ message: 'Failed to get cache status' });
+    return res.status(500).json({ message: 'Failed to get cache status' });
   }
 });
 
 // Clear cache endpoint
-router.delete('/cache/clear', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/cache/clear', authenticateToken, async (_req: Request, res: Response) => {
   try {
     const size = stockDataCache.size;
     stockDataCache.clear();
     cacheStats = { hits: 0, misses: 0, totalRequests: 0 };
     
-    res.json({
+    return res.json({
       message: `Cache cleared successfully`,
       clearedEntries: size
     });
   } catch (error) {
     console.error('Error clearing cache:', error);
-    res.status(500).json({ message: 'Failed to clear cache' });
+    return res.status(500).json({ message: 'Failed to clear cache' });
   }
 });
 
@@ -628,10 +627,10 @@ router.get('/overview/:symbol', authenticateToken, async (req: Request, res: Res
     const upperSymbol = symbol.toUpperCase();
     const overview = await getCompanyOverview(upperSymbol);
     
-    res.json(overview);
+    return res.json(overview);
   } catch (error) {
     console.error('Error fetching company overview:', error);
-    res.status(500).json({ message: 'Failed to fetch company overview' });
+    return res.status(500).json({ message: 'Failed to fetch company overview' });
   }
 });
 
@@ -646,10 +645,10 @@ router.get('/income/:symbol', authenticateToken, async (req: Request, res: Respo
     const upperSymbol = symbol.toUpperCase();
     const incomeStatement = await getIncomeStatement(upperSymbol);
     
-    res.json(incomeStatement);
+    return res.json(incomeStatement);
   } catch (error) {
     console.error('Error fetching income statement:', error);
-    res.status(500).json({ message: 'Failed to fetch income statement' });
+    return res.status(500).json({ message: 'Failed to fetch income statement' });
   }
 });
 
@@ -664,10 +663,10 @@ router.get('/balance/:symbol', authenticateToken, async (req: Request, res: Resp
     const upperSymbol = symbol.toUpperCase();
     const balanceSheet = await getBalanceSheet(upperSymbol);
     
-    res.json(balanceSheet);
+    return res.json(balanceSheet);
   } catch (error) {
     console.error('Error fetching balance sheet:', error);
-    res.status(500).json({ message: 'Failed to fetch balance sheet' });
+    return res.status(500).json({ message: 'Failed to fetch balance sheet' });
   }
 });
 
@@ -682,10 +681,10 @@ router.get('/cashflow/:symbol', authenticateToken, async (req: Request, res: Res
     const upperSymbol = symbol.toUpperCase();
     const cashFlow = await getCashFlow(upperSymbol);
     
-    res.json(cashFlow);
+    return res.json(cashFlow);
   } catch (error) {
     console.error('Error fetching cash flow:', error);
-    res.status(500).json({ message: 'Failed to fetch cash flow' });
+    return res.status(500).json({ message: 'Failed to fetch cash flow' });
   }
 });
 
@@ -700,10 +699,10 @@ router.get('/earnings/:symbol', authenticateToken, async (req: Request, res: Res
     const upperSymbol = symbol.toUpperCase();
     const earnings = await getEarnings(upperSymbol);
     
-    res.json(earnings);
+    return res.json(earnings);
   } catch (error) {
     console.error('Error fetching earnings:', error);
-    res.status(500).json({ message: 'Failed to fetch earnings' });
+    return res.status(500).json({ message: 'Failed to fetch earnings' });
   }
 });
 
@@ -726,7 +725,7 @@ router.get('/financial/:symbol', authenticateToken, async (req: Request, res: Re
       getEarnings(upperSymbol)
     ]);
     
-    res.json({
+    return res.json({
       symbol: upperSymbol,
       overview,
       incomeStatement,
@@ -737,7 +736,7 @@ router.get('/financial/:symbol', authenticateToken, async (req: Request, res: Re
     });
   } catch (error) {
     console.error('Error fetching financial data:', error);
-    res.status(500).json({ message: 'Failed to fetch financial data' });
+    return res.status(500).json({ message: 'Failed to fetch financial data' });
   }
 });
 
@@ -766,14 +765,14 @@ async function getCompanyOverview(symbol: string): Promise<any> {
     
     if (data.Note || data.Information) {
       console.warn('Alpha Vantage API limit reached for overview');
-      return getMockCompanyOverview(symbol);
+      return getMockData(symbol, 'overview');
     }
     
     financialDataCache.set(cacheKey, { data, timestamp: Date.now() });
     return data;
   } catch (error) {
     console.error('Error fetching company overview:', error);
-    return getMockCompanyOverview(symbol);
+    return getMockData(symbol, 'overview');
   }
 }
 
@@ -798,14 +797,14 @@ async function getIncomeStatement(symbol: string): Promise<any> {
     const data = await response.json() as any;
     
     if (data.Note || data.Information) {
-      return getMockIncomeStatement(symbol);
+      return getMockData(symbol, 'incomeStatement');
     }
     
     financialDataCache.set(cacheKey, { data, timestamp: Date.now() });
     return data;
   } catch (error) {
     console.error('Error fetching income statement:', error);
-    return getMockIncomeStatement(symbol);
+    return getMockData(symbol, 'incomeStatement');
   }
 }
 
@@ -830,14 +829,14 @@ async function getBalanceSheet(symbol: string): Promise<any> {
     const data = await response.json() as any;
     
     if (data.Note || data.Information) {
-      return getMockBalanceSheet(symbol);
+      return getMockData(symbol, 'balanceSheet');
     }
     
     financialDataCache.set(cacheKey, { data, timestamp: Date.now() });
     return data;
   } catch (error) {
     console.error('Error fetching balance sheet:', error);
-    return getMockBalanceSheet(symbol);
+    return getMockData(symbol, 'balanceSheet');
   }
 }
 
@@ -862,14 +861,14 @@ async function getCashFlow(symbol: string): Promise<any> {
     const data = await response.json() as any;
     
     if (data.Note || data.Information) {
-      return getMockCashFlow(symbol);
+      return getMockData(symbol, 'cashFlow');
     }
     
     financialDataCache.set(cacheKey, { data, timestamp: Date.now() });
     return data;
   } catch (error) {
     console.error('Error fetching cash flow:', error);
-    return getMockCashFlow(symbol);
+    return getMockData(symbol, 'cashFlow');
   }
 }
 
@@ -894,14 +893,14 @@ async function getEarnings(symbol: string): Promise<any> {
     const data = await response.json() as any;
     
     if (data.Note || data.Information) {
-      return getMockEarnings(symbol);
+      return getMockData(symbol, 'earnings');
     }
     
     financialDataCache.set(cacheKey, { data, timestamp: Date.now() });
     return data;
   } catch (error) {
     console.error('Error fetching earnings:', error);
-    return getMockEarnings(symbol);
+    return getMockData(symbol, 'earnings');
   }
 }
 

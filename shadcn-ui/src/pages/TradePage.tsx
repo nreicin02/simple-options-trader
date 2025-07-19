@@ -19,7 +19,12 @@ import {
   PieChart,
   Activity,
   Plus,
-  X
+  X,
+  Eye,
+  Target,
+  Calculator,
+  Brain,
+  Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/services/api';
@@ -30,6 +35,13 @@ import { useStockData, useFinancialData, usePortfolioData, usePositionsData, use
 import MockDataNotice from '@/components/MockDataNotice';
 import { useChat } from '@/contexts/ChatContext';
 import { Textarea } from '@/components/ui/textarea';
+import { OptionsChain } from '@/components/ui/OptionsChain';
+import { OptionsOrderForm } from '@/components/ui/OptionsOrderForm';
+import { OptionsStrategyBuilder } from '@/components/ui/OptionsStrategyBuilder';
+import { OptionsCalculator } from '@/components/ui/OptionsCalculator';
+import { OptionsAIAdvisor } from '@/components/ui/OptionsAIAdvisor';
+import { OptionsRiskManager } from '@/components/ui/OptionsRiskManager';
+import { useState } from 'react';
 
 interface StockData {
   symbol: string;
@@ -72,6 +84,11 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
   const { messages, sendMessage, resetConversation } = useChat();
   const [chatInput, setChatInput] = React.useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const [selectedOption, setSelectedOption] = useState<any>(null);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [savedStrategies, setSavedStrategies] = useState<any[]>([]);
+  const [riskAlerts, setRiskAlerts] = useState<string[]>([]);
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
   
   // API hooks
   const stockDataHook = useStockData();
@@ -177,7 +194,6 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
     } catch (error) {
       console.error('Error loading watchlist data:', error);
       toast.error('Failed to load watchlist data');
-      // Set empty data to prevent loading state
       actions.setWatchlistData([]);
     } finally {
       actions.setWatchlistLoading(false);
@@ -192,7 +208,7 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
       const mockOptions: OptionData[] = [];
       const currentPrice = state.stockData?.price || 200;
       
-      // Generate calls
+      // Generate calls and puts
       for (let i = -2; i <= 2; i++) {
         const strike = Math.round(currentPrice + (i * 5));
         mockOptions.push({
@@ -208,11 +224,7 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
           volume: Math.floor(Math.random() * 1000),
           openInterest: Math.floor(Math.random() * 5000)
         });
-      }
-      
-      // Generate puts
-      for (let i = -2; i <= 2; i++) {
-        const strike = Math.round(currentPrice + (i * 5));
+        
         mockOptions.push({
           symbol: symbol.toUpperCase(),
           strike,
@@ -238,49 +250,15 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
     }
   };
 
-  const placeOptionOrder = async (option: OptionData) => {
-    actions.setLoading(true);
-    try {
-      const orderData = {
-        symbol: option.symbol,
-        type: 'limit',
-        side: state.orderSide,
-        quantity: state.quantity,
-        price: option.price,
-        orderType: 'option',
-        strike: option.strike,
-        expiration: option.expiration,
-        optionType: option.type
-      };
-
-      const result = await apiClient.placeOrder(orderData);
-      toast.success(`${state.orderSide.toUpperCase()} ${option.type} option order placed successfully!`);
-      
-      // Update portfolio data
-      await loadPortfolioData();
-    } catch (error) {
-      toast.error('Failed to place option order');
-      console.error('Error placing option order:', error);
-      } finally {
-      actions.setLoading(false);
-    }
-  };
-    
   const generateChartData = (basePrice: number, timeframe: string) => {
     const data = [];
     const now = new Date();
-    let points = 24; // Default to 24 points for 1D
+    let points = 24;
     
     switch (timeframe) {
-      case '1W':
-        points = 7;
-        break;
-      case '1M':
-        points = 30;
-        break;
-      case '3M':
-        points = 90;
-        break;
+      case '1W': points = 7; break;
+      case '1M': points = 30; break;
+      case '3M': points = 90; break;
     }
     
     for (let i = points - 1; i >= 0; i--) {
@@ -291,8 +269,7 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
         date.setDate(date.getDate() - i);
       }
       
-      // Generate realistic price movement
-      const volatility = 0.02; // 2% daily volatility
+      const volatility = 0.02;
       const change = (Math.random() - 0.5) * volatility * basePrice;
       const price = basePrice + change;
       
@@ -354,10 +331,8 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
       const result = await apiClient.placeOrder(orderData);
       toast.success(`${state.orderSide.toUpperCase()} order placed successfully!`);
       
-      // Update portfolio data
       await loadPortfolioData();
       
-      // Reset form
       actions.setOrderType('market');
       actions.setQuantity(1);
       actions.setLimitPrice('');
@@ -381,1294 +356,879 @@ export default function TradePage({ activeTab, setActiveTab }: TradePageProps) {
     return 'text-gray-600';
   };
 
-  // Performance Analysis Functions
-  const calculatePerformanceMetrics = (trades: any[]) => {
-    if (!trades || trades.length === 0) {
-      return {
-        totalTrades: 0,
-        winningTrades: 0,
-        losingTrades: 0,
-        winRate: 0,
-        totalPnL: 0,
-        averageWin: 0,
-        averageLoss: 0,
-        profitFactor: 0,
-        maxDrawdown: 0,
-        sharpeRatio: 0,
-        averageTrade: 0,
-        bestTrade: 0,
-        worstTrade: 0,
-        totalVolume: 0,
-        averageVolume: 0
-      };
-    }
-
-    // Calculate P&L for each trade based on buy/sell pairs
-    const tradePnLs: number[] = [];
-    const buyTrades = trades.filter(trade => trade.side === 'buy');
-    const sellTrades = trades.filter(trade => trade.side === 'sell');
-
-    // For simplicity, assume we're calculating P&L based on current market value
-    // In a real implementation, you'd match buy/sell pairs
-    sellTrades.forEach(sellTrade => {
-      const buyTrade = buyTrades.find(buy => buy.symbol === sellTrade.symbol);
-      if (buyTrade) {
-        const pnl = (sellTrade.price - buyTrade.price) * Math.min(sellTrade.quantity, buyTrade.quantity);
-        tradePnLs.push(pnl);
-      }
-    });
-
-    // If no matched trades, use a simplified calculation
-    if (tradePnLs.length === 0) {
-      // Generate mock P&L data for demonstration
-      trades.forEach((trade, index) => {
-        const mockPnL = (Math.random() - 0.4) * 1000; // 60% chance of profit
-        tradePnLs.push(mockPnL);
-      });
-    }
-
-    const winningTrades = tradePnLs.filter(pnl => pnl > 0);
-    const losingTrades = tradePnLs.filter(pnl => pnl < 0);
-    
-    const totalPnL = tradePnLs.reduce((sum, pnl) => sum + pnl, 0);
-    const totalVolume = trades.reduce((sum, trade) => sum + (trade.quantity * trade.price), 0);
-    
-    const winRate = tradePnLs.length > 0 ? (winningTrades.length / tradePnLs.length) * 100 : 0;
-    const averageWin = winningTrades.length > 0 ? winningTrades.reduce((sum, pnl) => sum + pnl, 0) / winningTrades.length : 0;
-    const averageLoss = losingTrades.length > 0 ? Math.abs(losingTrades.reduce((sum, pnl) => sum + pnl, 0)) / losingTrades.length : 0;
-    const profitFactor = averageLoss > 0 ? averageWin / averageLoss : 0;
-    const averageTrade = tradePnLs.length > 0 ? totalPnL / tradePnLs.length : 0;
-    
-    const bestTrade = tradePnLs.length > 0 ? Math.max(...tradePnLs) : 0;
-    const worstTrade = tradePnLs.length > 0 ? Math.min(...tradePnLs) : 0;
-
-    // Calculate max drawdown
-    let maxDrawdown = 0;
-    let peak = 0;
-    let runningPnL = 0;
-    
-    tradePnLs.forEach(pnl => {
-      runningPnL += pnl;
-      if (runningPnL > peak) {
-        peak = runningPnL;
-      }
-      const drawdown = peak - runningPnL;
-      if (drawdown > maxDrawdown) {
-        maxDrawdown = drawdown;
-      }
-    });
-
-    return {
-      totalTrades: trades.length,
-      winningTrades: winningTrades.length,
-      losingTrades: losingTrades.length,
-      winRate,
-      totalPnL,
-      averageWin,
-      averageLoss,
-      profitFactor,
-      maxDrawdown,
-      sharpeRatio: 0, // Simplified for now
-      averageTrade,
-      bestTrade,
-      worstTrade,
-      totalVolume,
-      averageVolume: totalVolume / trades.length
-    };
+  const handleOptionOrder = (option: any, action: 'buy' | 'sell') => {
+    setSelectedOption(option);
+    setShowOrderForm(true);
   };
 
-  const generatePerformanceChartData = (trades: any[], timeframe: string) => {
-    if (!trades || trades.length === 0) return [];
-
-    const now = new Date();
-    const filteredTrades = trades.filter(trade => {
-      const tradeDate = new Date(trade.createdAt);
-      switch (timeframe) {
-        case '1W':
-          return tradeDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        case '1M':
-          return tradeDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        case '3M':
-          return tradeDate >= new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        case '1Y':
-          return tradeDate >= new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        default:
-          return true;
-      }
-    });
-
-    // Group trades by date and calculate daily P&L
-    const groupedTrades = filteredTrades.reduce((acc, trade) => {
-      const date = new Date(trade.createdAt).toLocaleDateString();
-      if (!acc[date]) {
-        acc[date] = [];
-      }
-      acc[date].push(trade);
-      return acc;
-    }, {});
-
-    const chartData = Object.entries(groupedTrades).map(([date, dayTrades]: [string, any]) => {
-      // Calculate P&L for the day using the same logic as metrics
-      const dayPnLs: number[] = [];
-      const buyTrades = dayTrades.filter((trade: any) => trade.side === 'buy');
-      const sellTrades = dayTrades.filter((trade: any) => trade.side === 'sell');
-
-      sellTrades.forEach((sellTrade: any) => {
-        const buyTrade = buyTrades.find((buy: any) => buy.symbol === sellTrade.symbol);
-        if (buyTrade) {
-          const pnl = (sellTrade.price - buyTrade.price) * Math.min(sellTrade.quantity, buyTrade.quantity);
-          dayPnLs.push(pnl);
-        }
-      });
-
-      // If no matched trades, generate mock P&L
-      if (dayPnLs.length === 0) {
-        dayTrades.forEach((trade: any) => {
-          const mockPnL = (Math.random() - 0.4) * 500; // 60% chance of profit
-          dayPnLs.push(mockPnL);
-        });
-      }
-
-      const dayPnL = dayPnLs.reduce((sum, pnl) => sum + pnl, 0);
-      const dayVolume = dayTrades.reduce((sum: number, trade: any) => sum + (trade.quantity * trade.price), 0);
-
-      return {
-        date,
-        pnl: dayPnL,
-        trades: dayTrades.length,
-        volume: dayVolume
-      };
-    });
-
-    // Calculate cumulative P&L
-    let cumulativePnL = 0;
-    return chartData.map(data => {
-      cumulativePnL += data.pnl;
-      return {
-        ...data,
-        cumulativePnL
-      };
-    });
-  };
-
-  const loadPerformanceData = async () => {
-    actions.setPerformanceLoading(true);
+  const handlePlaceOptionOrder = async (orderData: any) => {
     try {
-      const metrics = calculatePerformanceMetrics(state.trades);
-      const chartData = generatePerformanceChartData(state.trades, state.performanceTimeframe);
-      
-      actions.setPerformanceData({
-        metrics,
-        chartData
-      });
+      toast.success(`${orderData.action.toUpperCase()} order placed for ${orderData.quantity} ${orderData.symbol} ${orderData.strike} ${orderData.optionType.toUpperCase()}`);
+      setShowOrderForm(false);
+      setSelectedOption(null);
+      await loadPortfolioData();
     } catch (error) {
-      console.error('Error loading performance data:', error);
-      toast.error('Failed to load performance data');
-    } finally {
-      actions.setPerformanceLoading(false);
+      console.error('Error placing option order:', error);
+      toast.error('Failed to place option order');
     }
   };
 
-  useEffect(() => {
-    if (state.trades.length > 0) {
-      loadPerformanceData();
-    }
-  }, [state.trades, state.performanceTimeframe]);
+  const handleCancelOptionOrder = () => {
+    setShowOrderForm(false);
+    setSelectedOption(null);
+  };
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Mock Data Notice */}
-      <MockDataNotice className="mb-4" />
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Trading Dashboard</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => loadPortfolioData()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
+    <div className="container mx-auto p-4 lg:p-6 space-y-6">
+      <MockDataNotice className="mb-6" />
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Trading Dashboard</h1>
+        <Button variant="outline" onClick={() => loadPortfolioData()} className="w-full sm:w-auto">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh Data
+        </Button>
       </div>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-10">
-          <TabsTrigger value="trading">Trading</TabsTrigger>
-          <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-          <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
-          <TabsTrigger value="options">Options</TabsTrigger>
-          <TabsTrigger value="charts">Charts</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="financial">Financial Data</TabsTrigger>
-          <TabsTrigger value="chat">Chat</TabsTrigger>
+
+      {/* Unified Search Interface */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-0 shadow-sm">
+        <CardHeader className="pb-6">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Search className="h-6 w-6" />
+            Stock Search & Quote
+          </CardTitle>
+          <CardDescription className="text-base">Search for any stock to view real-time data, charts, and options</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Label htmlFor="symbol" className="text-sm font-medium">Stock Symbol</Label>
+              <Input
+                id="symbol"
+                placeholder="e.g., AAPL, TSLA, MSFT"
+                value={state.symbol}
+                onChange={(e) => actions.setSymbol(e.target.value.toUpperCase())}
+                onKeyPress={(e) => e.key === 'Enter' && handleSymbolSubmit()}
+                className="mt-2 h-12 text-base"
+              />
+            </div>
+            <Button 
+              onClick={handleSymbolSubmit} 
+              disabled={state.loading} 
+              className="w-full sm:w-auto sm:mt-8 h-12 px-8"
+            >
+              <Search className="h-5 w-5 mr-2" />
+              {state.loading ? 'Searching...' : 'Search'}
+            </Button>
+          </div>
+
+          {state.stockData && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-white rounded-xl border shadow-sm">
+              <div className="text-center">
+                <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Price</p>
+                <p className="text-2xl lg:text-3xl font-bold text-gray-900">{formatCurrency(state.stockData.price)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Change</p>
+                <div className="flex items-center justify-center gap-2">
+                  {getChangeIcon(state.stockData.change)}
+                  <p className={`text-lg lg:text-xl font-semibold ${getChangeColor(state.stockData.change)}`}>
+                    {formatCurrency(state.stockData.change)}
+                  </p>
+                </div>
+                <p className={`text-sm ${getChangeColor(state.stockData.change)}`}>
+                  {formatPercentage(state.stockData.changePercent)}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Volume</p>
+                <p className="text-lg lg:text-xl font-semibold text-gray-900">{formatNumber(state.stockData.volume)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Updated</p>
+                <p className="text-sm text-gray-600">{new Date(state.stockData.timestamp).toLocaleTimeString()}</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-12">
+          <TabsTrigger value="portfolio-trading" className="flex items-center gap-2 text-sm font-medium">
+            <PieChart className="h-4 w-4" />
+            <span className="hidden sm:inline">Portfolio & Trading</span>
+            <span className="sm:hidden">Portfolio</span>
+          </TabsTrigger>
+          <TabsTrigger value="financials" className="flex items-center gap-2 text-sm font-medium">
+            <DollarSign className="h-4 w-4" />
+            Financials
+          </TabsTrigger>
+          <TabsTrigger value="options" className="flex items-center gap-2 text-sm font-medium">
+            <Calculator className="h-4 w-4" />
+            Options
+          </TabsTrigger>
+          <TabsTrigger value="ai-tools" className="flex items-center gap-2 text-sm font-medium">
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Tools</span>
+            <span className="sm:hidden">AI</span>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="trading" className="space-y-6">
-          {/* Stock Search and Data */}
+        <TabsContent value="portfolio-trading" className="space-y-6">
+          {/* Portfolio Overview */}
           <Card>
-            <CardHeader>
-              <CardTitle>Stock Lookup</CardTitle>
-              <CardDescription>Search for stocks and view real-time data</CardDescription>
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl">Portfolio Overview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="symbol">Stock Symbol</Label>
-                  <Input
-                    id="symbol"
-                    placeholder="e.g., AAPL, TSLA, MSFT"
-                    value={state.symbol}
-                    onChange={(e) => actions.setSymbol(e.target.value.toUpperCase())}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSymbolSubmit()}
-                  />
+            <CardContent>
+              {state.portfolio ? (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="text-center p-6 bg-green-50 rounded-xl border border-green-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Total Value</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-green-700">{formatCurrency(state.portfolio.totalValue)}</p>
+                  </div>
+                  <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Cash</p>
+                    <p className="text-xl lg:text-2xl font-semibold text-blue-700">{formatCurrency(state.portfolio.cash)}</p>
+                  </div>
+                  <div className="text-center p-6 bg-orange-50 rounded-xl border border-orange-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Day P&L</p>
+                    <p className={`text-xl lg:text-2xl font-semibold ${state.portfolio.dayPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(state.portfolio.dayPnL)}
+                    </p>
+                  </div>
+                  <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Total P&L</p>
+                    <p className={`text-xl lg:text-2xl font-semibold ${state.portfolio.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(state.portfolio.totalPnL)}
+                    </p>
+                  </div>
                 </div>
-                <Button onClick={handleSymbolSubmit} disabled={state.loading}>
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </Button>
-              </div>
-
-              {state.stockData && (
-                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Price</p>
-                        <p className="text-2xl font-bold">{formatCurrency(state.stockData.price)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Change</p>
-                        <div className="flex items-center gap-1">
-                          {getChangeIcon(state.stockData.change)}
-                          <p className={`text-lg font-semibold ${getChangeColor(state.stockData.change)}`}>
-                            {formatCurrency(state.stockData.change)} ({formatPercentage(state.stockData.changePercent)})
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Volume</p>
-                        <p className="text-lg font-semibold">{formatNumber(state.stockData.volume)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Last Updated</p>
-                        <p className="text-sm">{new Date(state.stockData.timestamp).toLocaleTimeString()}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              ) : (
+                <div className="text-center py-12">
+                  <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+                  <p className="text-gray-600 text-lg">Loading portfolio...</p>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Order Placement */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Place Order</CardTitle>
-              <CardDescription>Buy or sell stocks with different order types</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="orderType">Order Type</Label>
-                  <Select value={state.orderType} onValueChange={actions.setOrderType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="market">Market</SelectItem>
-                      <SelectItem value="limit">Limit</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="quantity">Quantity</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={state.quantity}
-                    onChange={(e) => actions.setQuantity(parseInt(e.target.value) || 1)}
-                  />
-                </div>
-                {state.orderType === 'limit' && (
-                  <div>
-                    <Label htmlFor="limitPrice">Limit Price</Label>
-                    <Input
-                      id="limitPrice"
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={state.limitPrice}
-                      onChange={(e) => actions.setLimitPrice(e.target.value)}
-                    />
+          {/* Quick Trading Panel */}
+          {state.stockData && (
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl">Quick Trading</CardTitle>
+                <CardDescription className="text-base">Place orders for stocks in your portfolio or search for new ones</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-gray-50 rounded-xl">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Current Price</p>
+                    <p className="text-xl font-bold text-gray-900">{formatCurrency(state.stockData.price)}</p>
                   </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  className="flex-1 bg-green-600 hover:bg-green-700" 
-                  onClick={() => {
-                    actions.setOrderSide('buy');
-                    handleOrderSubmit();
-                  }}
-                  disabled={!state.stockData || state.loading}
-                >
-                  Buy {state.quantity} {state.symbol}
-                </Button>
-                <Button 
-                  className="flex-1 bg-red-600 hover:bg-red-700" 
-                  onClick={() => {
-                    actions.setOrderSide('sell');
-                    handleOrderSubmit();
-                  }}
-                  disabled={!state.stockData || state.loading || !state.positions.find(p => p.symbol === state.symbol?.toUpperCase())}
-                >
-                  Sell {state.quantity} {state.symbol}
-                </Button>
-              </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Change</p>
+                    <div className="flex items-center justify-center gap-2">
+                      {getChangeIcon(state.stockData.change)}
+                      <p className={`text-lg font-semibold ${getChangeColor(state.stockData.change)}`}>
+                        {formatCurrency(state.stockData.change)}
+                      </p>
+                    </div>
+                    <p className={`text-sm ${getChangeColor(state.stockData.change)}`}>
+                      {formatPercentage(state.stockData.changePercent)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Volume</p>
+                    <p className="text-lg font-semibold text-gray-900">{formatNumber(state.stockData.volume)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Updated</p>
+                    <p className="text-sm text-gray-600">{new Date(state.stockData.timestamp).toLocaleTimeString()}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div>
+                      <Label htmlFor="orderType" className="text-sm font-medium">Order Type</Label>
+                      <Select value={state.orderType} onValueChange={actions.setOrderType}>
+                        <SelectTrigger className="mt-2 h-12">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="market">Market</SelectItem>
+                          <SelectItem value="limit">Limit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="quantity" className="text-sm font-medium">Quantity</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        value={state.quantity}
+                        onChange={(e) => actions.setQuantity(parseInt(e.target.value) || 1)}
+                        className="mt-2 h-12"
+                      />
+                    </div>
+                    {state.orderType === 'limit' && (
+                      <div>
+                        <Label htmlFor="limitPrice" className="text-sm font-medium">Limit Price</Label>
+                        <Input
+                          id="limitPrice"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={state.limitPrice}
+                          onChange={(e) => actions.setLimitPrice(e.target.value)}
+                          className="mt-2 h-12"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button 
+                      className="flex-1 bg-green-600 hover:bg-green-700 h-12 text-lg font-semibold" 
+                      onClick={() => {
+                        actions.setOrderSide('buy');
+                        handleOrderSubmit();
+                      }}
+                      disabled={!state.stockData || state.loading}
+                    >
+                      Buy {state.quantity} {state.symbol}
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-red-600 hover:bg-red-700 h-12 text-lg font-semibold" 
+                      onClick={() => {
+                        actions.setOrderSide('sell');
+                        handleOrderSubmit();
+                      }}
+                      disabled={!state.stockData || state.loading || !state.positions.find(p => p.symbol === state.symbol?.toUpperCase())}
+                    >
+                      Sell {state.quantity} {state.symbol}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Positions */}
+          <Card>
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl">Current Positions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {state.positions.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold">Symbol</TableHead>
+                        <TableHead className="text-sm font-semibold">Quantity</TableHead>
+                        <TableHead className="text-sm font-semibold">Avg Price</TableHead>
+                        <TableHead className="text-sm font-semibold">Current Price</TableHead>
+                        <TableHead className="text-sm font-semibold">Market Value</TableHead>
+                        <TableHead className="text-sm font-semibold">Unrealized P&L</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {state.positions.map((position) => (
+                        <TableRow key={position.symbol}>
+                          <TableCell className="font-semibold text-base">{position.symbol}</TableCell>
+                          <TableCell className="text-base">{position.quantity}</TableCell>
+                          <TableCell className="text-base">{formatCurrency(position.averagePrice)}</TableCell>
+                          <TableCell className="text-base">{formatCurrency(position.currentPrice)}</TableCell>
+                          <TableCell className="text-base">{formatCurrency(position.marketValue)}</TableCell>
+                          <TableCell className={`text-base font-semibold ${position.unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(position.unrealizedPnL)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <PieChart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 text-lg">No positions found</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Watchlist Management */}
+          {/* Watchlist */}
           <Card>
-            <CardHeader>
-              <CardTitle>Watchlist Management</CardTitle>
-              <CardDescription>Add stocks to your watchlist for easy tracking</CardDescription>
+            <CardHeader className="pb-6">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Eye className="h-6 w-6" />
+                Watchlist
+              </CardTitle>
+              <CardDescription className="text-base">Track your favorite stocks</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
+            <CardContent className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
-                  <Label htmlFor="watchlistSymbol">Stock Symbol</Label>
+                  <Label htmlFor="watchlistSymbol" className="text-sm font-medium">Add to Watchlist</Label>
                   <Input
                     id="watchlistSymbol"
                     placeholder="e.g., AAPL, TSLA, MSFT"
                     value={state.symbol}
                     onChange={(e) => actions.setSymbol(e.target.value.toUpperCase())}
                     onKeyPress={(e) => e.key === 'Enter' && addToWatchlist(state.symbol)}
+                    className="mt-2 h-12"
                   />
                 </div>
-                <Button onClick={() => addToWatchlist(state.symbol)} disabled={!state.symbol.trim()}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add to Watchlist
+                <Button 
+                  onClick={() => addToWatchlist(state.symbol)} 
+                  disabled={!state.symbol.trim()} 
+                  className="w-full sm:w-auto sm:mt-8 h-12 px-8"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add
                 </Button>
               </div>
+              
               {state.watchlist.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3 mb-6">
                   {state.watchlist.map((symbol) => (
-                    <Badge key={symbol} variant="secondary" className="cursor-pointer" onClick={() => removeFromWatchlist(symbol)}>
-                      {symbol} <X className="h-3 w-3 ml-1" />
+                    <Badge key={symbol} variant="secondary" className="cursor-pointer hover:bg-red-100 px-3 py-2 text-sm" onClick={() => removeFromWatchlist(symbol)}>
+                      {symbol} <X className="h-4 w-4 ml-2" />
                     </Badge>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="portfolio" className="space-y-6">
-          {/* Portfolio Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Portfolio Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {state.portfolio ? (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Total Value</p>
-                    <p className="text-2xl font-bold">{formatCurrency(state.portfolio.totalValue)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Cash</p>
-                    <p className="text-xl font-semibold">{formatCurrency(state.portfolio.cash)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Day P&L</p>
-                    <p className={`text-lg font-semibold ${state.portfolio.dayPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(state.portfolio.dayPnL)}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Total P&L</p>
-                    <p className={`text-lg font-semibold ${state.portfolio.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(state.portfolio.totalPnL)}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p>Loading portfolio...</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Positions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Positions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {state.positions.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Avg Price</TableHead>
-                      <TableHead>Current Price</TableHead>
-                      <TableHead>Market Value</TableHead>
-                      <TableHead>Unrealized P&L</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {state.positions.map((position) => (
-                      <TableRow key={position.symbol}>
-                        <TableCell className="font-semibold">{position.symbol}</TableCell>
-                        <TableCell>{position.quantity}</TableCell>
-                        <TableCell>{formatCurrency(position.averagePrice)}</TableCell>
-                        <TableCell>{formatCurrency(position.currentPrice)}</TableCell>
-                        <TableCell>{formatCurrency(position.marketValue)}</TableCell>
-                        <TableCell className={position.unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {formatCurrency(position.unrealizedPnL)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p>No positions found.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="watchlist" className="space-y-6">
-          {/* Watchlist */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Watchlist</CardTitle>
-              <CardDescription>Track your favorite stocks in real-time</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Add search bar for watchlist */}
-              <div className="flex gap-4 mb-4">
-                <div className="flex-1">
-                  <Label htmlFor="watchlistAddSymbol">Add Symbol</Label>
-                  <Input
-                    id="watchlistAddSymbol"
-                    placeholder="e.g., AAPL, TSLA, MSFT"
-                    value={state.symbol}
-                    onChange={(e) => actions.setSymbol(e.target.value.toUpperCase())}
-                    onKeyPress={(e) => e.key === 'Enter' && addToWatchlist(state.symbol)}
-                  />
-                </div>
-                <Button onClick={() => addToWatchlist(state.symbol)} disabled={!state.symbol.trim()}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add
-                </Button>
-              </div>
               {state.watchlistLoading ? (
-                <div className="text-center py-8">
+                <div className="text-center py-12">
                   <RefreshCw className="h-12 w-12 text-blue-500 mx-auto mb-4 animate-spin" />
-                  <p className="text-gray-600">Loading watchlist data...</p>
+                  <p className="text-gray-600 text-lg">Loading watchlist data...</p>
                 </div>
               ) : state.watchlistData.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Change</TableHead>
-                      <TableHead>Change %</TableHead>
-                      <TableHead>Volume</TableHead>
-                      <TableHead>Last Updated</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {state.watchlistData.map((data) => (
-                      <TableRow key={data.symbol}>
-                        <TableCell className="font-semibold">{data.symbol}</TableCell>
-                        <TableCell>{formatCurrency(data.price)}</TableCell>
-                        <TableCell className={data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-600'}>
-                          {formatCurrency(data.change)}
-                        </TableCell>
-                        <TableCell className={data.changePercent > 0 ? 'text-green-600' : data.changePercent < 0 ? 'text-red-600' : 'text-gray-600'}>
-                          {formatPercentage(data.changePercent)}
-                        </TableCell>
-                        <TableCell>{formatNumber(data.volume)}</TableCell>
-                        <TableCell>{new Date(data.timestamp).toLocaleTimeString()}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="icon" onClick={() => addToWatchlist(data.symbol)}>
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => removeFromWatchlist(data.symbol)}>
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold">Symbol</TableHead>
+                        <TableHead className="text-sm font-semibold">Price</TableHead>
+                        <TableHead className="text-sm font-semibold">Change</TableHead>
+                        <TableHead className="text-sm font-semibold">Change %</TableHead>
+                        <TableHead className="text-sm font-semibold">Volume</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {state.watchlistData.map((data) => (
+                        <TableRow key={data.symbol}>
+                          <TableCell className="font-semibold text-base">{data.symbol}</TableCell>
+                          <TableCell className="text-base">{formatCurrency(data.price)}</TableCell>
+                          <TableCell className={`text-base ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                            {formatCurrency(data.change)}
+                          </TableCell>
+                          <TableCell className={`text-base ${data.changePercent > 0 ? 'text-green-600' : data.changePercent < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                            {formatPercentage(data.changePercent)}
+                          </TableCell>
+                          <TableCell className="text-base">{formatNumber(data.volume)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">No stocks in your watchlist</p>
-                  <p className="text-sm text-gray-500">Add stocks from the Trading tab to start tracking them</p>
+                <div className="text-center py-12">
+                  <Eye className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 text-lg">No stocks in your watchlist</p>
                 </div>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="options" className="space-y-6">
-          {/* Options */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Options</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {state.optionsData.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Strike</TableHead>
-                      <TableHead>Expiration</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Delta</TableHead>
-                      <TableHead>Gamma</TableHead>
-                      <TableHead>Theta</TableHead>
-                      <TableHead>Vega</TableHead>
-                      <TableHead>Volume</TableHead>
-                      <TableHead>Open Interest</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {state.optionsData.map((option) => (
-                      <TableRow key={option.symbol + option.strike + option.expiration + option.type}>
-                        <TableCell className="font-semibold">{option.symbol}</TableCell>
-                        <TableCell>{option.strike}</TableCell>
-                        <TableCell>{option.expiration}</TableCell>
-                        <TableCell>{option.type === 'call' ? 'Call' : 'Put'}</TableCell>
-                        <TableCell>{formatCurrency(option.price)}</TableCell>
-                        <TableCell>{option.delta.toFixed(2)}</TableCell>
-                        <TableCell>{option.gamma.toFixed(2)}</TableCell>
-                        <TableCell>{option.theta.toFixed(2)}</TableCell>
-                        <TableCell>{option.vega.toFixed(2)}</TableCell>
-                        <TableCell>{formatNumber(option.volume)}</TableCell>
-                        <TableCell>{formatNumber(option.openInterest)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="icon" onClick={() => placeOptionOrder(option)}>
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p>No options data available</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="charts" className="space-y-6">
-          {/* Charts */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Interactive Charts - {state.stockData?.symbol || 'Select a Stock'}</CardTitle>
-              <CardDescription>Technical analysis and price history</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Timeframe Selector */}
-              <div className="flex gap-2">
-                {(['1D', '1W', '1M', '3M'] as const).map((timeframe) => (
-                  <Button
-                    key={timeframe}
-                    variant={state.chartTimeframe === timeframe ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      actions.setChartTimeframe(timeframe);
-                      if (state.stockData) {
-                        updateChartData(state.stockData.symbol, timeframe);
-                      }
-                    }}
-                  >
-                    {timeframe}
-                  </Button>
-                ))}
-              </div>
-
-              {/* Price Chart */}
-              {state.priceHistory.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Price Chart</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={state.priceHistory}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis domain={['dataMin - 1', 'dataMax + 1']} />
-                      <Tooltip 
-                        formatter={(value: any) => [`$${value}`, 'Price']}
-                        labelFormatter={(label) => `Time: ${label}`}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="price" 
-                        stroke="#2563eb" 
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              {/* Volume Chart */}
-              {state.volumeData.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Volume Chart</h3>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={state.volumeData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value: any) => [formatNumber(value), 'Volume']}
-                        labelFormatter={(label) => `Time: ${label}`}
-                      />
-                      <Bar dataKey="volume" fill="#10b981" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              {state.priceHistory.length === 0 && (
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Search for a stock to view charts</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="orders" className="space-y-6">
-          {/* Orders */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Orders</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {state.orders.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Side</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {state.orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-semibold">{order.symbol}</TableCell>
-                        <TableCell>{order.type}</TableCell>
-                        <TableCell>
-                          <Badge variant={order.side === 'buy' ? 'default' : 'secondary'}>
-                            {order.side.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{order.quantity}</TableCell>
-                        <TableCell>{order.price ? formatCurrency(order.price) : 'Market'}</TableCell>
-                        <TableCell>
-                          <Badge variant={order.status === 'filled' ? 'default' : 'outline'}>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p>No orders found.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-6">
           {/* Trade History */}
           <Card>
-            <CardHeader>
-              <CardTitle>Trade History</CardTitle>
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl">Trade History</CardTitle>
             </CardHeader>
             <CardContent>
               {state.trades.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {state.trades.map((trade) => (
-                      <TableRow key={trade.id}>
-                        <TableCell>{new Date(trade.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-semibold">{trade.symbol}</TableCell>
-                        <TableCell>
-                          <Badge variant={trade.side === 'buy' ? 'default' : 'secondary'}>
-                            {trade.side.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{trade.quantity}</TableCell>
-                        <TableCell>{formatCurrency(trade.price)}</TableCell>
-                        <TableCell>{formatCurrency(trade.quantity * trade.price)}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold">Date</TableHead>
+                        <TableHead className="text-sm font-semibold">Symbol</TableHead>
+                        <TableHead className="text-sm font-semibold">Type</TableHead>
+                        <TableHead className="text-sm font-semibold">Quantity</TableHead>
+                        <TableHead className="text-sm font-semibold">Price</TableHead>
+                        <TableHead className="text-sm font-semibold">Total</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p>No trade history found.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-6">
-          {/* Performance Analysis */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Analysis</CardTitle>
-              <CardDescription>Comprehensive performance analysis including P&L charts, win/loss ratios, and trading statistics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {state.performanceLoading ? (
-                <div className="text-center py-8">
-                  <RefreshCw className="h-12 w-12 text-blue-500 mx-auto mb-4 animate-spin" />
-                  <p className="text-gray-600">Loading performance data...</p>
-                </div>
-              ) : state.performanceData ? (
-                <div className="space-y-6">
-                  {/* Timeframe Selector */}
-                  <div className="flex gap-2">
-                    {(['1W', '1M', '3M', '1Y', 'ALL'] as const).map((timeframe) => (
-                      <Button
-                        key={timeframe}
-                        variant={state.performanceTimeframe === timeframe ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => actions.setPerformanceTimeframe(timeframe)}
-                      >
-                        {timeframe}
-                      </Button>
-                    ))}
-                  </div>
-
-                  {/* Key Metrics */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Total P&L</p>
-                      <p className={`text-2xl font-bold ${state.performanceData.metrics.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(state.performanceData.metrics.totalPnL)}
-                      </p>
-                    </div>
-                    <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Win Rate</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {state.performanceData.metrics.winRate.toFixed(1)}%
-                      </p>
-                    </div>
-                    <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Total Trades</p>
-                      <p className="text-2xl font-bold text-purple-600">
-                        {state.performanceData.metrics.totalTrades}
-                      </p>
-                    </div>
-                    <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Profit Factor</p>
-                      <p className="text-2xl font-bold text-orange-600">
-                        {state.performanceData.metrics.profitFactor.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Detailed Statistics */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Trading Statistics</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Winning Trades:</span>
-                          <span className="font-semibold text-green-600">{state.performanceData.metrics.winningTrades}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Losing Trades:</span>
-                          <span className="font-semibold text-red-600">{state.performanceData.metrics.losingTrades}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Average Win:</span>
-                          <span className="font-semibold text-green-600">{formatCurrency(state.performanceData.metrics.averageWin)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Average Loss:</span>
-                          <span className="font-semibold text-red-600">{formatCurrency(state.performanceData.metrics.averageLoss)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Average Trade:</span>
-                          <span className={`font-semibold ${state.performanceData.metrics.averageTrade >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(state.performanceData.metrics.averageTrade)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Best Trade:</span>
-                          <span className="font-semibold text-green-600">{formatCurrency(state.performanceData.metrics.bestTrade)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Worst Trade:</span>
-                          <span className="font-semibold text-red-600">{formatCurrency(state.performanceData.metrics.worstTrade)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Max Drawdown:</span>
-                          <span className="font-semibold text-red-600">{formatCurrency(state.performanceData.metrics.maxDrawdown)}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Volume Analysis</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Total Volume:</span>
-                          <span className="font-semibold">{formatCurrency(state.performanceData.metrics.totalVolume)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Average Volume:</span>
-                          <span className="font-semibold">{formatCurrency(state.performanceData.metrics.averageVolume)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Trades per Day:</span>
-                          <span className="font-semibold">{(state.performanceData.metrics.totalTrades / 30).toFixed(1)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Sharpe Ratio:</span>
-                          <span className="font-semibold">{state.performanceData.metrics.sharpeRatio.toFixed(2)}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* P&L Chart */}
-                  {state.performanceData.chartData.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Cumulative P&L Over Time</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <LineChart data={state.performanceData.chartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip 
-                              formatter={(value: any) => [formatCurrency(value), 'P&L']}
-                              labelFormatter={(label) => `Date: ${label}`}
-                            />
-                            <Line 
-                              type="monotone" 
-                              dataKey="cumulativePnL" 
-                              stroke="#2563eb" 
-                              strokeWidth={2}
-                              dot={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Recent Performance */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Recent Performance</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {state.performanceData.chartData.length > 0 ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Date</TableHead>
-                              <TableHead>P&L</TableHead>
-                              <TableHead>Cumulative P&L</TableHead>
-                              <TableHead>Trades</TableHead>
-                              <TableHead>Volume</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {state.performanceData.chartData.slice(-10).reverse().map((data, index) => (
-                              <TableRow key={index}>
-                                <TableCell>{data.date}</TableCell>
-                                <TableCell className={data.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                  {formatCurrency(data.pnl)}
-                                </TableCell>
-                                <TableCell className={data.cumulativePnL >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                  {formatCurrency(data.cumulativePnL)}
-                                </TableCell>
-                                <TableCell>{data.trades}</TableCell>
-                                <TableCell>{formatCurrency(data.volume)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <p className="text-center text-gray-500 py-4">No performance data available for the selected timeframe</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {state.trades.slice(0, 10).map((trade) => (
+                        <TableRow key={trade.id}>
+                          <TableCell className="text-base">{new Date(trade.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell className="font-semibold text-base">{trade.symbol}</TableCell>
+                          <TableCell>
+                            <Badge variant={trade.side === 'buy' ? 'default' : 'secondary'} className="text-sm px-3 py-1">
+                              {trade.side.toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-base">{trade.quantity}</TableCell>
+                          <TableCell className="text-base">{formatCurrency(trade.price)}</TableCell>
+                          <TableCell className="text-base">{formatCurrency(trade.quantity * trade.price)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No performance data available</p>
-                  <p className="text-sm text-gray-500">Complete some trades to see your performance analysis</p>
+                <div className="text-center py-12">
+                  <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 text-lg">No trade history found</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="financial" className="space-y-6">
-          {/* Financial Data Search */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Financial Data Search
-              </CardTitle>
-              <CardDescription>Search for comprehensive financial data on any stock</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="financialSymbol">Stock Symbol</Label>
-                  <Input
-                    id="financialSymbol"
-                    placeholder="e.g., AAPL, TSLA, MSFT, GOOGL"
-                    value={state.symbol}
-                    onChange={(e) => actions.setSymbol(e.target.value.toUpperCase())}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSymbolSubmit()}
-                  />
-                </div>
-                <Button onClick={handleSymbolSubmit} disabled={state.financialLoading}>
-                  <Search className="h-4 w-4 mr-2" />
-                  {state.financialLoading ? 'Loading...' : 'Search'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {state.financialLoading ? (
+        <TabsContent value="financials" className="space-y-6">
+          {/* Company Overview */}
+          {state.financialData?.overview && (
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <RefreshCw className="h-12 w-12 text-blue-500 mx-auto mb-4 animate-spin" />
-                  <p className="text-gray-600">Loading comprehensive financial data...</p>
+              <CardHeader className="pb-6">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <DollarSign className="h-6 w-6" />
+                  Company Overview - {state.financialData.overview.Symbol || state.symbol}
+                </CardTitle>
+                <CardDescription className="text-base">Key company information and metrics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Company Name</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.Name || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Market Cap</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.MarketCapitalization ? formatNumber(state.financialData.overview.MarketCapitalization) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">P/E Ratio</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.PERatio || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Dividend Yield</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.DividendYield ? `${state.financialData.overview.DividendYield}%` : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">52 Week High</p>
+                    <p className="font-semibold text-base">{state.financialData.overview['52WeekHigh'] ? formatCurrency(state.financialData.overview['52WeekHigh']) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">52 Week Low</p>
+                    <p className="font-semibold text-base">{state.financialData.overview['52WeekLow'] ? formatCurrency(state.financialData.overview['52WeekLow']) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Beta</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.Beta || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Sector</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.Sector || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Industry</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.Industry || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Exchange</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.Exchange || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Currency</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.Currency || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-xl border">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Country</p>
+                    <p className="font-semibold text-base">{state.financialData.overview.Country || 'N/A'}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          ) : !state.financialData ? (
+          )}
+
+          {/* Income Statement */}
+          {state.financialData?.incomeStatement?.annualReports?.[0] && (
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Search for a stock symbol to view comprehensive financial data</p>
+              <CardHeader className="pb-6">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <TrendingUp className="h-6 w-6" />
+                  Income Statement (Latest Annual)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Total Revenue</p>
+                    <p className="font-semibold text-base">{state.financialData.incomeStatement.annualReports[0].totalRevenue ? formatNumber(state.financialData.incomeStatement.annualReports[0].totalRevenue) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-green-50 rounded-xl border border-green-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Gross Profit</p>
+                    <p className="font-semibold text-base">{state.financialData.incomeStatement.annualReports[0].grossProfit ? formatNumber(state.financialData.incomeStatement.annualReports[0].grossProfit) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-purple-50 rounded-xl border border-purple-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Net Income</p>
+                    <p className="font-semibold text-base">{state.financialData.incomeStatement.annualReports[0].netIncome ? formatNumber(state.financialData.incomeStatement.annualReports[0].netIncome) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-orange-50 rounded-xl border border-orange-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">EBITDA</p>
+                    <p className="font-semibold text-base">{state.financialData.incomeStatement.annualReports[0].ebitda ? formatNumber(state.financialData.incomeStatement.annualReports[0].ebitda) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-indigo-50 rounded-xl border border-indigo-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Operating Income</p>
+                    <p className="font-semibold text-base">{state.financialData.incomeStatement.annualReports[0].operatingIncome ? formatNumber(state.financialData.incomeStatement.annualReports[0].operatingIncome) : 'N/A'}</p>
+                  </div>
+                  <div className="p-6 bg-pink-50 rounded-xl border border-pink-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">EBIT</p>
+                    <p className="font-semibold text-base">{state.financialData.incomeStatement.annualReports[0].ebit ? formatNumber(state.financialData.incomeStatement.annualReports[0].ebit) : 'N/A'}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <>
-              {/* Company Overview */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Company Overview - {state.financialData?.overview?.Symbol || 'N/A'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {state.financialData?.overview ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Company Name</p>
-                        <p className="font-semibold">{state.financialData.overview.Name || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Market Cap</p>
-                        <p className="font-semibold">{state.financialData.overview.MarketCapitalization ? formatNumber(state.financialData.overview.MarketCapitalization) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">P/E Ratio</p>
-                        <p className="font-semibold">{state.financialData.overview.PERatio || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Dividend Yield</p>
-                        <p className="font-semibold">{state.financialData.overview.DividendYield ? `${state.financialData.overview.DividendYield}%` : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">52 Week High</p>
-                        <p className="font-semibold">{state.financialData.overview['52WeekHigh'] ? formatCurrency(state.financialData.overview['52WeekHigh']) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">52 Week Low</p>
-                        <p className="font-semibold">{state.financialData.overview['52WeekLow'] ? formatCurrency(state.financialData.overview['52WeekLow']) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Beta</p>
-                        <p className="font-semibold">{state.financialData.overview.Beta || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Sector</p>
-                        <p className="font-semibold">{state.financialData.overview.Sector || 'N/A'}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p>No overview data available</p>
-                  )}
-                </CardContent>
-              </Card>
+          )}
 
-              {/* Income Statement */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Income Statement
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {state.financialData?.incomeStatement?.annualReports?.[0] ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Total Revenue</p>
-                        <p className="font-semibold">{state.financialData.incomeStatement.annualReports[0].totalRevenue ? formatNumber(state.financialData.incomeStatement.annualReports[0].totalRevenue) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Gross Profit</p>
-                        <p className="font-semibold">{state.financialData.incomeStatement.annualReports[0].grossProfit ? formatNumber(state.financialData.incomeStatement.annualReports[0].grossProfit) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Net Income</p>
-                        <p className="font-semibold">{state.financialData.incomeStatement.annualReports[0].netIncome ? formatNumber(state.financialData.incomeStatement.annualReports[0].netIncome) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">EBITDA</p>
-                        <p className="font-semibold">{state.financialData.incomeStatement.annualReports[0].ebitda ? formatNumber(state.financialData.incomeStatement.annualReports[0].ebitda) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Operating Income</p>
-                        <p className="font-semibold">{state.financialData.incomeStatement.annualReports[0].operatingIncome ? formatNumber(state.financialData.incomeStatement.annualReports[0].operatingIncome) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">EBIT</p>
-                        <p className="font-semibold">{state.financialData.incomeStatement.annualReports[0].ebit ? formatNumber(state.financialData.incomeStatement.annualReports[0].ebit) : 'N/A'}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p>No income statement data available</p>
-                  )}
-                </CardContent>
-              </Card>
+          {/* Charts */}
+          {state.priceHistory.length > 0 && (
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <BarChart3 className="h-6 w-6" />
+                  Price Charts - {state.stockData?.symbol}
+                </CardTitle>
+                <CardDescription className="text-base">Technical analysis and price history</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex flex-wrap gap-3">
+                  {(['1D', '1W', '1M', '3M'] as const).map((timeframe) => (
+                    <Button
+                      key={timeframe}
+                      variant={state.chartTimeframe === timeframe ? 'default' : 'outline'}
+                      size="lg"
+                      onClick={() => {
+                        actions.setChartTimeframe(timeframe);
+                        if (state.stockData) {
+                          updateChartData(state.stockData.symbol, timeframe);
+                        }
+                      }}
+                    >
+                      {timeframe}
+                    </Button>
+                  ))}
+                </div>
 
-              {/* Balance Sheet */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChart className="h-5 w-5" />
-                    Balance Sheet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {state.financialData?.balanceSheet?.annualReports?.[0] ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Total Assets</p>
-                        <p className="font-semibold">{state.financialData.balanceSheet.annualReports[0].totalAssets ? formatNumber(state.financialData.balanceSheet.annualReports[0].totalAssets) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Total Liabilities</p>
-                        <p className="font-semibold">{state.financialData.balanceSheet.annualReports[0].totalLiabilities ? formatNumber(state.financialData.balanceSheet.annualReports[0].totalLiabilities) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Total Equity</p>
-                        <p className="font-semibold">{state.financialData.balanceSheet.annualReports[0].totalShareholderEquity ? formatNumber(state.financialData.balanceSheet.annualReports[0].totalShareholderEquity) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Cash & Equivalents</p>
-                        <p className="font-semibold">{state.financialData.balanceSheet.annualReports[0].cashAndCashEquivalentsAtCarryingValue ? formatNumber(state.financialData.balanceSheet.annualReports[0].cashAndCashEquivalentsAtCarryingValue) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Total Debt</p>
-                        <p className="font-semibold">{state.financialData.balanceSheet.annualReports[0].totalDebt ? formatNumber(state.financialData.balanceSheet.annualReports[0].totalDebt) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Retained Earnings</p>
-                        <p className="font-semibold">{state.financialData.balanceSheet.annualReports[0].retainedEarnings ? formatNumber(state.financialData.balanceSheet.annualReports[0].retainedEarnings) : 'N/A'}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p>No balance sheet data available</p>
-                  )}
-                </CardContent>
-              </Card>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={state.priceHistory}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis domain={['dataMin - 1', 'dataMax + 1']} />
+                    <Tooltip 
+                      formatter={(value: any) => [`$${value}`, 'Price']}
+                      labelFormatter={(label) => `Time: ${label}`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="#2563eb" 
+                      strokeWidth={3}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
-              {/* Cash Flow */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Cash Flow Statement
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {state.financialData?.cashFlow?.annualReports?.[0] ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Operating Cash Flow</p>
-                        <p className="font-semibold">{state.financialData.cashFlow.annualReports[0].operatingCashflow ? formatNumber(state.financialData.cashFlow.annualReports[0].operatingCashflow) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Investing Cash Flow</p>
-                        <p className="font-semibold">{state.financialData.cashFlow.annualReports[0].cashflowFromInvestment ? formatNumber(state.financialData.cashFlow.annualReports[0].cashflowFromInvestment) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Financing Cash Flow</p>
-                        <p className="font-semibold">{state.financialData.cashFlow.annualReports[0].cashflowFromFinancing ? formatNumber(state.financialData.cashFlow.annualReports[0].cashflowFromFinancing) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Capital Expenditures</p>
-                        <p className="font-semibold">{state.financialData.cashFlow.annualReports[0].capitalExpenditures ? formatNumber(state.financialData.cashFlow.annualReports[0].capitalExpenditures) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Dividend Payout</p>
-                        <p className="font-semibold">{state.financialData.cashFlow.annualReports[0].dividendPayout ? formatNumber(state.financialData.cashFlow.annualReports[0].dividendPayout) : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Free Cash Flow</p>
-                        <p className="font-semibold">
-                          {state.financialData.cashFlow.annualReports[0].operatingCashflow && state.financialData.cashFlow.annualReports[0].capitalExpenditures 
-                            ? formatNumber(state.financialData.cashFlow.annualReports[0].operatingCashflow - state.financialData.cashFlow.annualReports[0].capitalExpenditures)
-                            : 'N/A'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p>No cash flow data available</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Earnings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Earnings Data
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {state.financialData?.earnings?.quarterlyEarnings ? (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold">Recent Quarterly Earnings</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Quarter</TableHead>
-                            <TableHead>Reported EPS</TableHead>
-                            <TableHead>Estimated EPS</TableHead>
-                            <TableHead>Surprise</TableHead>
-                            <TableHead>Surprise %</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {state.financialData.earnings.quarterlyEarnings.slice(0, 4).map((earnings: any, index: number) => (
-                            <TableRow key={index}>
-                              <TableCell>{earnings.fiscalDateEnding}</TableCell>
-                              <TableCell className="font-semibold">${earnings.reportedEPS}</TableCell>
-                              <TableCell>${earnings.estimatedEPS}</TableCell>
-                              <TableCell className={parseFloat(earnings.surprise) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                ${earnings.surprise}
-                              </TableCell>
-                              <TableCell className={parseFloat(earnings.surprisePercentage) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                {earnings.surprisePercentage}%
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <p>No earnings data available</p>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+          {!state.financialData?.overview && !state.loading && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <DollarSign className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 text-lg">Search for a stock symbol to view comprehensive financial data</p>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
-        <TabsContent value="chat" className="space-y-6">
-          <Card className="w-full max-w-2xl mx-auto flex flex-col h-[70vh] rounded-2xl shadow-xl">
-            <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-gray-50 to-white">
-              {messages.length === 0 && (
-                <div className="text-center text-gray-400 text-base mt-16">Ask anything about stocks or options…</div>
+        <TabsContent value="options" className="space-y-6">
+          {/* Options Chain */}
+          <Card>
+            <CardHeader className="pb-6">
+              <CardTitle className="flex items-center justify-between text-xl">
+                <span>Options Chain - {state.stockData?.symbol || 'Select a Stock'}</span>
+                {state.stockData && (
+                  <Button
+                    onClick={() => fetchOptionsData(state.stockData.symbol)}
+                    disabled={state.optionsLoading}
+                    size="lg"
+                  >
+                    {state.optionsLoading ? 'Loading...' : 'Load Options'}
+                  </Button>
+                )}
+              </CardTitle>
+              <CardDescription className="text-base">
+                {state.stockData 
+                  ? `Current price: ${formatCurrency(state.stockData.price)}`
+                  : 'Search for a stock to view options data'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!showOrderForm ? (
+                <OptionsChain
+                  options={state.optionsData}
+                  currentStockPrice={state.stockData?.price || 0}
+                  onPlaceOrder={handleOptionOrder}
+                  loading={state.optionsLoading}
+                />
+              ) : (
+                <OptionsOrderForm
+                  option={selectedOption}
+                  currentStockPrice={state.stockData?.price || 0}
+                  onPlaceOrder={handlePlaceOptionOrder}
+                  onCancel={handleCancelOptionOrder}
+                  loading={false}
+                />
               )}
-              {messages.map((msg, idx) => (
-                <div key={idx} className={`mb-4 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <span className={`max-w-[75%] px-4 py-2 rounded-2xl shadow text-base whitespace-pre-line ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-br-md' : 'bg-gray-200 text-gray-900 rounded-bl-md'}`}>{msg.text}</span>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-            <div className="p-4 border-t bg-white flex gap-2 items-end">
-              <Textarea
-                className="flex-1 resize-none rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500"
-                rows={2}
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(chatInput); setChatInput(''); } }}
-                placeholder="Type your message..."
-              />
-              <Button onClick={() => { sendMessage(chatInput); setChatInput(''); }} disabled={!chatInput.trim()} className="rounded-lg px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow">
-                Send
-              </Button>
-            </div>
-            <Button variant="outline" className="m-2 self-end" onClick={resetConversation}>
-              Start New Conversation
-            </Button>
+            </CardContent>
           </Card>
+
+          {/* Options Tools */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Strategy Builder */}
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl">Strategy Builder</CardTitle>
+                <CardDescription className="text-base">Build and analyze complex options strategies</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OptionsStrategyBuilder
+                  currentStockPrice={state.stockData?.price || 0}
+                  availableOptions={state.optionsData}
+                  onBuildStrategy={(strategy) => {
+                    toast.success(`Strategy "${strategy.name}" built successfully!`);
+                  }}
+                  onSaveStrategy={(strategy) => {
+                    setSavedStrategies(prev => [...prev, strategy]);
+                    toast.success(`Strategy "${strategy.name}" saved!`);
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Options Calculator */}
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl">Options Calculator</CardTitle>
+                <CardDescription className="text-base">Calculate option prices, Greeks, and profit/loss scenarios</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OptionsCalculator
+                  currentStockPrice={state.stockData?.price || 0}
+                  onCalculate={(results) => {
+                    console.log('Calculator results:', results);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Greeks Exposure */}
+          <Card>
+            <CardHeader className="pb-6">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Shield className="h-6 w-6" />
+                Portfolio Greeks Exposure
+              </CardTitle>
+              <CardDescription className="text-base">Monitor your portfolio's sensitivity to market changes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OptionsRiskManager
+                positions={state.positions.map(pos => ({
+                  id: pos.id,
+                  symbol: pos.symbol,
+                  type: pos.type || 'stock',
+                  quantity: pos.quantity,
+                  price: pos.price,
+                  currentValue: pos.quantity * pos.price,
+                  delta: pos.delta || 0,
+                  gamma: pos.gamma || 0,
+                  theta: pos.theta || 0,
+                  vega: pos.vega || 0
+                }))}
+                portfolioValue={state.portfolio?.totalValue || 0}
+                onRiskAlert={(alert) => {
+                  setRiskAlerts(prev => [...prev, alert]);
+                  toast.error(`Risk Alert: ${alert}`);
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Saved Strategies */}
+          {savedStrategies.length > 0 && (
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl">Saved Strategies</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {savedStrategies.map((strategy, index) => (
+                    <Card key={strategy.id || index} className="p-6 border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-base">{strategy.name}</h4>
+                          <p className="text-sm text-gray-600 mt-2">
+                            {strategy.legs.length} leg{strategy.legs.length > 1 ? 's' : ''} • 
+                            Max Loss: {formatCurrency(strategy.maxLoss)} • 
+                            Max Profit: {strategy.maxProfit === Infinity ? 'Unlimited' : formatCurrency(strategy.maxProfit)}
+                          </p>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button variant="outline" size="lg">Execute</Button>
+                          <Button variant="outline" size="lg" className="text-red-600">Delete</Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="ai-tools" className="space-y-6">
+          {/* AI Tools Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* AI Advisor */}
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Brain className="h-6 w-6" />
+                  AI Trading Advisor
+                </CardTitle>
+                <CardDescription className="text-base">Get AI-powered trading recommendations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OptionsAIAdvisor
+                  currentStockPrice={state.stockData?.price || 0}
+                  stockSymbol={state.stockData?.symbol || 'AAPL'}
+                  availableOptions={state.optionsData}
+                  onSelectStrategy={(recommendation) => {
+                    setAiRecommendations(prev => [...prev, recommendation]);
+                    toast.success(`Selected strategy: ${recommendation.strategy}`);
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* AI Chat Assistant Info */}
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Brain className="h-6 w-6" />
+                  AI Assistant
+                </CardTitle>
+                <CardDescription className="text-base">Get help with trading decisions and strategy analysis</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
+                    <h4 className="font-semibold text-blue-900 mb-4 text-base">How to use the AI Assistant</h4>
+                    <ul className="text-sm text-blue-800 space-y-2">
+                      <li>• Ask about stock analysis and market trends</li>
+                      <li>• Get options strategy recommendations</li>
+                      <li>• Learn about risk management techniques</li>
+                      <li>• Understand complex trading concepts</li>
+                    </ul>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-4">Use the floating chat widget to interact with the AI assistant</p>
+                    <Button 
+                      variant="outline" 
+                      size="lg"
+                      onClick={() => {
+                        toast.info('Click the chat icon in the bottom right to start a conversation');
+                      }}
+                    >
+                      Start Conversation
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AI Recommendations History */}
+          {aiRecommendations.length > 0 && (
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl">AI Recommendations History</CardTitle>
+                <CardDescription className="text-base">Track your AI-generated trading recommendations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {aiRecommendations.map((recommendation, index) => (
+                    <Card key={index} className="p-6 border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-base">{recommendation.strategy}</h4>
+                          <p className="text-sm text-gray-600 mt-2">
+                            {recommendation.reasoning}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-2">
+                            Risk Level: {recommendation.riskLevel} • Confidence: {recommendation.confidence}%
+                          </p>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button variant="outline" size="lg">View Details</Button>
+                          <Button variant="outline" size="lg" className="text-green-600">Execute</Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Risk Alerts */}
+          {riskAlerts.length > 0 && (
+            <Card>
+              <CardHeader className="pb-6">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Shield className="h-6 w-6 text-red-500" />
+                  Risk Alerts
+                </CardTitle>
+                <CardDescription className="text-base">Active risk management alerts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {riskAlerts.map((alert, index) => (
+                    <div key={index} className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-red-800 text-base">{alert}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

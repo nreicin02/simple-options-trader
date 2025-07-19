@@ -41,7 +41,7 @@ function ChatWidgetWrapper({ activeTab, setActiveTab }: { activeTab: string, set
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState('trading');
+  const [activeTab, setActiveTab] = useState('portfolio-trading');
   return (
     <AuthProvider>
       <ChatProvider>
